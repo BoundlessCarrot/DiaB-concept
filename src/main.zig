@@ -9,17 +9,53 @@ const radius_int: u32 = @as(u32, radius);
 const screenWidth = 1080;
 const screenHeight = 720;
 
+const CollisionTup = struct {
+    bool: bool,
+    point: raylib.Vector2,
+};
+
+fn normalMouseAngle(center: raylib.Vector2, mouse: raylib.Vector2) f32 {
+    return std.math.atan2(mouse.y - center.y, mouse.x - center.x);
+}
+
+fn mirroredMouseAngle(center: raylib.Vector2, mouse: raylib.Vector2) f32 {
+    return std.math.atan2(center.y - mouse.y, center.x - mouse.x);
+}
+
 fn calulateLineToEdgeV(center: raylib.Vector2, mouse: raylib.Vector2) raylib.Vector2 {
-    // const angle = std.math.atan2(center.y - mouse.y, center.x - mouse.x); //mirrored mouse
-    const angle = std.math.atan2(mouse.y - center.y, mouse.x - center.x); //normal mouse
+    const angle = normalMouseAngle(center, mouse);
     const max_x = center.x + (screenWidth / 2) * std.math.cos(angle);
     const max_y = center.y + (screenWidth / 2) * std.math.sin(angle);
     return raylib.Vector2.init(max_x, max_y);
 }
 
+// TODO: this is a bad way to do this, but it works for now
+//  return type for anonymous struct?
+fn checkCollisionLineRec(rec: raylib.Rectangle, line_start: raylib.Vector2, line_end: raylib.Vector2) CollisionTup {
+    // const rec_x = @as(i32, @intFromFloat(rec.x));
+    // const rec_y = @as(i32, @intFromFloat(rec.y));
+    // const rec_width = @as(i32, @intFromFloat(rec.width));
+    // const rec_height = @as(i32, @intFromFloat(rec.height));
+
+    var tup = CollisionTup{ .bool = false, .point = undefined };
+    var x: f32 = rec.x;
+    while (x <= rec.x + rec.width) : (x += 1.0) {
+        var y: f32 = rec.y;
+        while (y <= rec.y + rec.height) : (y += 1.0) {
+            const collision_point = raylib.Vector2.init(x, y);
+            if (raylib.checkCollisionPointLine(collision_point, line_start, line_end, 1)) {
+                tup = CollisionTup{ .bool = true, .point = collision_point };
+                return tup;
+            }
+        }
+    }
+}
+
 pub fn main() anyerror!void {
-    raylib.initWindow(screenWidth, screenHeight, "raylib [core] example - basic window w/ kb input, window limits, and mouse line tracking");
+    raylib.initWindow(screenWidth, screenHeight, "raylib [core] testing - basic window w/ kb input, window limits, mouse line tracking, and bullet collision detection");
     defer raylib.closeWindow();
+
+    var numCollisions: usize = 0;
 
     var ballPos = raylib.Vector2.init(screenWidth / 2, screenHeight / 2);
     var mousePos = raylib.Vector2.init(0, 0);
@@ -54,14 +90,28 @@ pub fn main() anyerror!void {
         raylib.beginDrawing();
         defer raylib.endDrawing();
 
-        raylib.hideCursor();
+        // raylib.hideCursor();
 
-        const string = try std.fmt.allocPrintZ(test_alloc, "move da ball, x: {d}, y: {d}", .{ ballPos.x, ballPos.y });
+        const string = try std.fmt.allocPrintZ(test_alloc, "move da ball, x: {d}, y: {d}, hits: {d}", .{ ballPos.x, ballPos.y, numCollisions });
         defer test_alloc.free(string);
 
         raylib.clearBackground(raylib.Color.white);
         raylib.drawText(string, 10, 10, 20, raylib.Color.black);
         raylib.drawCircleV(ballPos, radius, raylib.Color.maroon);
-        raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
+        // raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
+
+        const rec = raylib.Rectangle.init(900, 600, 60, 30);
+        raylib.drawRectangleRec(rec, raylib.Color.blue);
+
+        // check for collision between shot path and target
+        if (raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left)) {
+            const collision = checkCollisionLineRec(rec, ballPos, mouse_line_end);
+            if (collision.bool == true) {
+                numCollisions += 1;
+                raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
+                raylib.drawLineV(ballPos, collision.point, raylib.Color.green);
+            }
+            raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
+        }
     }
 }
