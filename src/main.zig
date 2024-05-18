@@ -29,14 +29,18 @@ fn calulateLineToEdgeV(center: raylib.Vector2, mouse: raylib.Vector2) raylib.Vec
     return raylib.Vector2.init(max_x, max_y);
 }
 
+fn calculateAimLine(center: raylib.Vector2, mouse: raylib.Vector2) raylib.Vector2 {
+    const max = calulateLineToEdgeV(center, mouse);
+    const angle = normalMouseAngle(center, mouse);
+    const diag_len = std.math.sqrt((max.x - center.x) * (max.x - center.x) + (max.y - center.y) * (max.y - center.y));
+    const clamp_x = center.x + (screenWidth / 2) * std.math.cos(angle) / diag_len + 25;
+    const clamp_y = center.y + (screenWidth / 2) * std.math.sin(angle) / diag_len + 25;
+    return raylib.Vector2.init(clamp_x, clamp_y);
+}
+
 // TODO: this is a bad way to do this, but it works for now
 //  return type for anonymous struct?
 fn checkCollisionLineRec(rec: raylib.Rectangle, line_start: raylib.Vector2, line_end: raylib.Vector2) CollisionTup {
-    // const rec_x = @as(i32, @intFromFloat(rec.x));
-    // const rec_y = @as(i32, @intFromFloat(rec.y));
-    // const rec_width = @as(i32, @intFromFloat(rec.width));
-    // const rec_height = @as(i32, @intFromFloat(rec.height));
-
     var tup = CollisionTup{ .bool = false, .point = undefined };
     var x: f32 = rec.x;
     while (x <= rec.x + rec.width) : (x += 1.0) {
@@ -49,6 +53,8 @@ fn checkCollisionLineRec(rec: raylib.Rectangle, line_start: raylib.Vector2, line
             }
         }
     }
+
+    return tup;
 }
 
 pub fn main() anyerror!void {
@@ -85,6 +91,7 @@ pub fn main() anyerror!void {
         mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
 
         const mouse_line_end = calulateLineToEdgeV(ballPos, mousePos);
+        const mouse_line_aim = calculateAimLine(ballPos, mousePos);
 
         // draw
         raylib.beginDrawing();
@@ -98,13 +105,13 @@ pub fn main() anyerror!void {
         raylib.clearBackground(raylib.Color.white);
         raylib.drawText(string, 10, 10, 20, raylib.Color.black);
         raylib.drawCircleV(ballPos, radius, raylib.Color.maroon);
-        // raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
+        raylib.drawLineV(ballPos, mouse_line_aim, raylib.Color.gray);
 
         const rec = raylib.Rectangle.init(900, 600, 60, 30);
         raylib.drawRectangleRec(rec, raylib.Color.blue);
 
         // check for collision between shot path and target
-        if (raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left)) {
+        if (raylib.isMouseButtonReleased(raylib.MouseButton.mouse_button_left)) {
             const collision = checkCollisionLineRec(rec, ballPos, mouse_line_end);
             if (collision.bool == true) {
                 numCollisions += 1;
