@@ -3,6 +3,8 @@ const raylib = @import("raylib");
 const rlib_math = @import("raylib-math");
 // const rlgl = @import("rlgl");
 
+const clamp = std.math.clamp;
+
 const radius: f32 = 10.0;
 const radius_int: u32 = @as(u32, radius);
 
@@ -49,7 +51,6 @@ fn calculatePathEnemyToPlayer(player: raylib.Vector2, enemy: raylib.Vector2) ray
 fn spawnEnemy(missedShotCoords: raylib.Vector2, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     const rec = raylib.Rectangle.init(missedShotCoords.x, missedShotCoords.y, 30, 30);
     try enemyList.append(rec);
-    // raylib.drawRectangleRec(rec, raylib.Color.red);
 }
 
 fn drawEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) void {
@@ -66,7 +67,7 @@ fn updateEnemyPos(player: raylib.Vector2, enemyList: *std.ArrayList(raylib.Recta
         const rec = enemyList.items[i];
         const slope = ((player.y - rec.y) / (player.x - rec.x));
         // _ = @constCast(&enemyList.items[i]);
-        enemyList.items[i] = raylib.Rectangle.init(rec.x + slope, rec.y + slope, rec.width, rec.height);
+        enemyList.items[i] = raylib.Rectangle.init(clamp(rec.x - slope, 0, screenHeight), clamp(rec.y - slope, 0, screenWidth), rec.width, rec.height);
     }
 }
 
