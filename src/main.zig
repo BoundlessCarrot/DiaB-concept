@@ -12,6 +12,7 @@ const screenHeight = 720;
 const CollisionTup = struct {
     bool: bool,
     point: raylib.Vector2,
+    rec_idx: usize,
 };
 
 fn normalMouseAngle(center: raylib.Vector2, mouse: raylib.Vector2) f32 {
@@ -38,18 +39,47 @@ fn calculateAimLine(center: raylib.Vector2, mouse: raylib.Vector2) raylib.Vector
     return raylib.Vector2.init(clamp_x, clamp_y);
 }
 
+fn calculatePathEnemyToPlayer(player: raylib.Vector2, enemy: raylib.Vector2) raylib.Vector2 {
+    const angle = normalMouseAngle(player, enemy);
+    const x = player.x + (screenWidth / 2) * std.math.cos(angle);
+    const y = player.y + (screenWidth / 2) * std.math.sin(angle);
+    return raylib.Vector2.init(x, y);
+}
+
+fn spawnEnemy(missedShotCoords: raylib.Vector2, enemyList: std.ArrayList(raylib.Rectangle)) void {
+    const rec = raylib.Rectangle.init(missedShotCoords.x, missedShotCoords.y, 30, 30);
+    enemyList.append(rec);
+    // raylib.drawRectangleRec(rec, raylib.Color.red);
+}
+
+fn drawEnemies(enemyList: std.ArrayList(raylib.Rectangle)) void {
+    for (enemyList.toOwnedSlice()) |enemy| {
+        raylib.drawRectangleRec(enemy, raylib.Color.red);
+    }
+}
+
+fn updateEnemyPos(player: raylib.Vector2, enemyList: std.ArrayList(raylib.Rectangle)) void {
+    for (enemyList.toOwnedSlice()) |rec| {
+        const slope = ((player.y - rec.y) / (player.x - rec.x)) / 5;
+        rec.x += slope;
+        rec.y += slope;
+    }
+}
+
 // TODO: this is a bad way to do this, but it works for now
 //  return type for anonymous struct?
-fn checkCollisionLineRec(rec: raylib.Rectangle, line_start: raylib.Vector2, line_end: raylib.Vector2) CollisionTup {
-    var tup = CollisionTup{ .bool = false, .point = undefined };
-    var x: f32 = rec.x;
-    while (x <= rec.x + rec.width) : (x += 1.0) {
-        var y: f32 = rec.y;
-        while (y <= rec.y + rec.height) : (y += 1.0) {
-            const collision_point = raylib.Vector2.init(x, y);
-            if (raylib.checkCollisionPointLine(collision_point, line_start, line_end, 1)) {
-                tup = CollisionTup{ .bool = true, .point = collision_point };
-                return tup;
+fn checkCollisionLineRec(enemyList: std.ArrayList(raylib.Rectangle), line_start: raylib.Vector2, line_end: raylib.Vector2) CollisionTup {
+    var tup = CollisionTup{ .bool = false, .point = undefined, .rec_idx = undefined };
+    for (enemyList.toOwnedSlice(), 0..) |rec, i| {
+        var x: f32 = rec.x;
+        while (x <= rec.x + rec.width) : (x += 1.0) {
+            var y: f32 = rec.y;
+            while (y <= rec.y + rec.height) : (y += 1.0) {
+                const collision_point = raylib.Vector2.init(x, y);
+                if (raylib.checkCollisionPointLine(collision_point, line_start, line_end, 1)) {
+                    tup = CollisionTup{ .bool = true, .point = collision_point, .rec_idx = i };
+                    return tup;
+                }
             }
         }
     }
@@ -73,6 +103,9 @@ pub fn main() anyerror!void {
         if (deinit_status == .leak) std.testing.expect(false) catch @panic("TEST FAIL");
     }
 
+    var enemyList: std.ArrayList(raylib.Rectangle) = std.ArrayList(raylib.Rectangle).init(gpa.allocator());
+    defer enemyList.deinit();
+
     raylib.setTargetFPS(60);
 
     while (!raylib.windowShouldClose()) {
@@ -91,7 +124,7 @@ pub fn main() anyerror!void {
         mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
 
         const mouse_line_end = calulateLineToEdgeV(ballPos, mousePos);
-        const mouse_line_aim = calculateAimLine(ballPos, mousePos);
+        // const mouse_line_aim = calculateAimLine(ballPos, mousePos);
 
         // draw
         raylib.beginDrawing();
@@ -104,21 +137,27 @@ pub fn main() anyerror!void {
 
         raylib.clearBackground(raylib.Color.white);
         raylib.drawText(string, 10, 10, 20, raylib.Color.black);
-        raylib.drawCircleV(ballPos, radius, raylib.Color.maroon);
-        raylib.drawLineV(ballPos, mouse_line_aim, raylib.Color.gray);
+        raylib.drawCircleV(ballPos, radius, raylib.Color.green);
+        // raylib.drawLineV(ballPos, mouse_line_aim, raylib.Color.gray);
 
-        const rec = raylib.Rectangle.init(900, 600, 60, 30);
-        raylib.drawRectangleRec(rec, raylib.Color.blue);
+        const rec = raylib.Rectangle.init(900, 600, 30, 30);
+        try enemyList.append(rec);
+        drawEnemies(enemyList);
+        updateEnemyPos(ballPos, enemyList);
 
         // check for collision between shot path and target
         if (raylib.isMouseButtonReleased(raylib.MouseButton.mouse_button_left)) {
-            const collision = checkCollisionLineRec(rec, ballPos, mouse_line_end);
+            const collision = checkCollisionLineRec(enemyList, ballPos, mouse_line_end);
             if (collision.bool == true) {
                 numCollisions += 1;
                 raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
-                raylib.drawLineV(ballPos, collision.point, raylib.Color.green);
+                raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
+                _ = try enemyList.swapRemove(collision.rec_idx);
+                // continue;
+            } else {
+                raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
+                spawnEnemy(mouse_line_end);
             }
-            raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
         }
     }
 }
