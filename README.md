@@ -12,7 +12,7 @@ I'm using:
 
 ### Running the game
   1. Install zig
-    - `brew install zig` usually works
+    - use your [package manager](https://github.com/ziglang/zig/wiki/Install-Zig-from-a-Package-Manager) of choice or [install from source](https://ziglang.org/download/)
   2. Fetch zig-raylib (from within the repo)
     - `zig fetch --save https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz`
   3. `zig build run`
