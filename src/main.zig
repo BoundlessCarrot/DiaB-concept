@@ -65,9 +65,9 @@ fn drawEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) void {
 fn updateEnemyPos(player: raylib.Vector2, enemyList: *std.ArrayList(raylib.Rectangle)) void {
     for (0..enemyList.items.len) |i| {
         const rec = enemyList.items[i];
-        const slope = ((player.y - rec.y) / (player.x - rec.x));
+        const slope = ((player.y - rec.y) / 5) / ((player.x - rec.x) / 5);
         // _ = @constCast(&enemyList.items[i]);
-        enemyList.items[i] = raylib.Rectangle.init(clamp(rec.x - slope, 0, screenHeight), clamp(rec.y - slope, 0, screenWidth), rec.width, rec.height);
+        enemyList.items[i] = raylib.Rectangle.init(rec.x - slope, rec.y - slope, rec.width, rec.height);
     }
 }
 
