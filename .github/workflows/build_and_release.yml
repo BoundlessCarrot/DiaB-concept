@@ -21,6 +21,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        config:
+          - os: ubuntu-latest
+            target: x86_64-linux-gnu
+          - os: macos-latest
+            target: aarch64-macos-none
+          - os: windows-latest
+            target: x86_64-windows-gnu
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -33,7 +40,7 @@ jobs:
 #          enableCrossOsArchive: true
       - run: zig fetch --save https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
         name: Get dependencies
-      - run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.os }}
+      - run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.config.target }}
         name: Build binary
       - name: Release
         uses: softprops/action-gh-release@v1
