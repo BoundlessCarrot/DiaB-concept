@@ -11,6 +11,8 @@ const radius_int: u32 = @as(u32, radius);
 const screenWidth = 1080;
 const screenHeight = 720;
 
+const ZERO_VECTOR = raylib.Vector2.init(0, 0);
+
 const CollisionTup = struct {
     bool: bool,
     point: raylib.Vector2,
@@ -41,12 +43,12 @@ fn calculateAimLine(center: raylib.Vector2, mouse: raylib.Vector2) raylib.Vector
     return raylib.Vector2.init(clamp_x, clamp_y);
 }
 
-fn calculatePathEnemyToPlayer(player: raylib.Vector2, enemy: raylib.Vector2) raylib.Vector2 {
-    const angle = normalMouseAngle(player, enemy);
-    const x = player.x + (screenWidth / 2) * std.math.cos(angle);
-    const y = player.y + (screenWidth / 2) * std.math.sin(angle);
-    return raylib.Vector2.init(x, y);
-}
+// fn calculatePathEnemyToPlayer(player: raylib.Vector2, enemy: raylib.Vector2) raylib.Vector2 {
+//     const angle = normalMouseAngle(player, enemy);
+//     const x = player.x + (screenWidth / 2) * std.math.cos(angle);
+//     const y = player.y + (screenWidth / 2) * std.math.sin(angle);
+//     return raylib.Vector2.init(x, y);
+// }
 
 fn spawnEnemy(missedShotCoords: raylib.Vector2, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     const rec = raylib.Rectangle.init(missedShotCoords.x, missedShotCoords.y, 30, 30);
@@ -59,16 +61,24 @@ fn drawEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) void {
     }
 }
 
-// TODO: updating isn't working completely correctly
-//  direction and speed are wrong
-//  coords need to be clamped to stay on the screen
 fn updateEnemyPos(player: raylib.Vector2, enemyList: *std.ArrayList(raylib.Rectangle)) void {
     for (0..enemyList.items.len) |i| {
         const rec = enemyList.items[i];
-        const slope = ((player.y - rec.y) / 5) / ((player.x - rec.x) / 5);
-        // _ = @constCast(&enemyList.items[i]);
-        enemyList.items[i] = raylib.Rectangle.init(rec.x - slope, rec.y - slope, rec.width, rec.height);
+        const originToPlayer = subtractVectors(player, ZERO_VECTOR);
+        const originToEnemy = subtractVectors(raylib.Vector2.init(rec.x, rec.y), ZERO_VECTOR);
+        const enemyToPlayer = subtractVectors(originToPlayer, originToEnemy);
+        const normalized = normalizeVector(enemyToPlayer);
+        enemyList.items[i] = raylib.Rectangle.init(rec.x + (normalized.x * 2), rec.y + (normalized.y * 2), rec.width, rec.height);
     }
+}
+
+fn subtractVectors(a: raylib.Vector2, b: raylib.Vector2) raylib.Vector2 {
+    return raylib.Vector2.init(a.x - b.x, a.y - b.y);
+}
+
+fn normalizeVector(v: raylib.Vector2) raylib.Vector2 {
+    const len = std.math.sqrt(v.x * v.x + v.y * v.y);
+    return raylib.Vector2.init(v.x / len, v.y / len);
 }
 
 fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start: raylib.Vector2, line_end: raylib.Vector2) CollisionTup {
