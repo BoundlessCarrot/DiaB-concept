@@ -30,7 +30,7 @@ jobs:
 #      - uses: actions/cache@v4.0.2
 #        with:
 #          enableCrossOsArchive: true
-          run: zig fetch https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
+      - run: zig fetch https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
       - run: zig build
       - name: Release
         uses: softprops/action-gh-release@v1
