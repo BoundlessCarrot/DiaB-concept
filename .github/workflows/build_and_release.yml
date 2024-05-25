@@ -35,13 +35,13 @@ jobs:
         name: Setup zig
         with:
           version: 0.12.0
-#      - uses: actions/cache@v4.0.2
-#        with:
-#          enableCrossOsArchive: true
-      - run: zig fetch --save https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
-        name: Get dependencies
-      - run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.target }}
-        name: Build binary
+      - name: Get dependencies
+        run: zig fetch --save https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev
+      - name: Build binary
+        run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.target }}
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
