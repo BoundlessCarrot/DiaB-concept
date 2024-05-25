@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
 #        os: [ubuntu-latest, macos-latest, windows-latest]
-        name: host=${{ matrix.config.os }} target=${{ matrix.config.target }}
+#        name: host=${{ matrix.config.os }} target=${{ matrix.config.target }}
         config:
           - os: ubuntu-latest
             target: x86_64-linux-gnu
