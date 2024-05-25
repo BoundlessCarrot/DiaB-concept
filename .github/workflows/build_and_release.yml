@@ -40,7 +40,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libgtk-4-dev build-essential
 
-      - name: Get dependencies
+      - name: Install dependencies (MacOS)
+        if: matrix.os == 'macos-latest'
+        run: xcode-select --install
+
+      - name: Get universal dependencies
         run: zig fetch --save https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
           
       - name: Build binary
