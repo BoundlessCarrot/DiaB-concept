@@ -20,7 +20,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, windows-latest] #, ubuntu-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         include:
 #          - os: ubuntu-latest
 #            target: x86_64-linux
