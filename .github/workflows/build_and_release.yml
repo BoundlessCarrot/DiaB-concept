@@ -21,17 +21,10 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        include:
-#          - os: ubuntu-latest
-#            target: x86_64-linux
-          - os: macos-latest
-            target: aarch64-macos-none
-          - os: windows-latest
-            target: x86_64-windows
     runs-on: ${{ matrix.os }}
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PR_NUMBER: ${{ github.event.number }}
+#    env:
+#      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#      PR_NUMBER: ${{ github.event.number }}
       
     steps:
       - uses: actions/checkout@v2
@@ -45,7 +38,7 @@ jobs:
         with:
           # You can change the name of the tag with this input.
           # Default: 'latest'
-          tag-name: ${{env.PR_NUMBER}}
+          ref: ${{env.PR_NUMBER}}
         
       - name: Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -67,3 +60,6 @@ jobs:
         with:
           files: |
             zig-out/bin/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
