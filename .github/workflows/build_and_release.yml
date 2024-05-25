@@ -35,13 +35,23 @@ jobs:
         name: Setup zig
         with:
           version: 0.12.0
+  
       - name: Get dependencies
         run: zig fetch --save https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
+        
       - name: Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev
+        
+      - name: Build raylib-zig
+        run: |
+          git clone --depth=1 --branch=devel https://github.com/Not-Nik/raylib-zig.git
+          cd raylib-zig
+          zig build -Dtarget=${{ matrix.target }}
+          
       - name: Build binary
         run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.target }}
+        
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
