@@ -19,6 +19,12 @@ const CollisionTup = struct {
     rec_idx: usize,
 };
 
+const Screen = enum {
+    MainMenu,
+    Game,
+    EndScreen,
+};
+
 fn normalMouseAngle(center: raylib.Vector2, mouse: raylib.Vector2) f32 {
     return std.math.atan2(mouse.y - center.y, mouse.x - center.x);
 }
@@ -100,6 +106,26 @@ fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start
     return tup;
 }
 
+fn checkCollisionEnemyPlayer(enemyList: *std.ArrayList(raylib.Rectangle), player: raylib.Vector2) bool {
+    for (enemyList.items) |rec| {
+        if (raylib.checkCollisionCircleRec(player, radius, rec)) {
+            // raylib.drawText("DEATH!", 900, 10, 20, raylib.Color.red);
+            return true;
+        }
+    }
+    return false;
+}
+
+// fn showEndScreen(numCollisions: usize, allocator: std.mem.Allocator) !void {
+//     raylib.beginDrawing();
+//     defer raylib.endDrawing();
+//
+//     raylib.clearBackground(raylib.Color.white);
+//     raylib.drawText("Game Over", 900, 10, 20, raylib.Color.red);
+//     const deathStr = try std.fmt.allocPrintZ(allocator, "You hit: {d} rectangles", .{numCollisions});
+//     raylib.drawText(deathStr, 900, 50, 20, raylib.Color.red);
+// }
+
 pub fn main() anyerror!void {
     raylib.initWindow(screenWidth, screenHeight, "Death is a Blessing concept test");
     defer raylib.closeWindow();
@@ -119,28 +145,53 @@ pub fn main() anyerror!void {
     var enemyList: std.ArrayList(raylib.Rectangle) = std.ArrayList(raylib.Rectangle).init(gpa.allocator());
     defer enemyList.deinit();
 
+    var currentScreen = Screen.MainMenu;
+    // var frameCounter: usize = 0;
     raylib.setTargetFPS(60);
 
     const rec = raylib.Rectangle.init(900, 600, 30, 30);
     try enemyList.append(rec);
 
     while (!raylib.windowShouldClose()) {
-        // Get input and update
-        if (ballPos.x >= screenWidth - radius_int) ballPos.x = screenWidth - radius_int;
-        if (ballPos.x <= 0 + radius_int) ballPos.x = 0 + radius_int;
-        if (ballPos.y >= screenHeight - radius_int) ballPos.y = screenHeight - radius_int;
-        if (ballPos.y <= 0 + radius_int) ballPos.y = 0 + radius_int;
-        if (raylib.isKeyDown(raylib.KeyboardKey.key_w)) ballPos.y -= 2.0;
-        if (raylib.isKeyDown(raylib.KeyboardKey.key_a)) ballPos.x -= 2.0;
-        if (raylib.isKeyDown(raylib.KeyboardKey.key_s)) ballPos.y += 2.0;
-        if (raylib.isKeyDown(raylib.KeyboardKey.key_d)) ballPos.x += 2.0;
+        switch (currentScreen) {
+            Screen.MainMenu => blk: {
+                // frameCounter += 1;
+                if (raylib.isKeyPressed(raylib.KeyboardKey.key_enter)) currentScreen = Screen.Game;
+                break :blk;
+            },
+            Screen.Game => blk: {
+                // Get input and update
+                if (ballPos.x >= screenWidth - radius_int) ballPos.x = screenWidth - radius_int;
+                if (ballPos.x <= 0 + radius_int) ballPos.x = 0 + radius_int;
+                if (ballPos.y >= screenHeight - radius_int) ballPos.y = screenHeight - radius_int;
+                if (ballPos.y <= 0 + radius_int) ballPos.y = 0 + radius_int;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_w)) ballPos.y -= 2.0;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_a)) ballPos.x -= 2.0;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_s)) ballPos.y += 2.0;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_d)) ballPos.x += 2.0;
 
-        mousePos = raylib.getMousePosition();
-        mousePos.x = @as(f32, @floatFromInt(raylib.getMouseX()));
-        mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
+                mousePos = raylib.getMousePosition();
+                mousePos.x = @as(f32, @floatFromInt(raylib.getMouseX()));
+                mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
 
-        const mouse_line_end = calulateLineToEdgeV(ballPos, mousePos);
-        // const mouse_line_aim = calculateAimLine(ballPos, mousePos);
+                // const mouse_line_aim = normalizeVector(subtractVectors(ballPos, mouse_line_end));
+
+                if (checkCollisionEnemyPlayer(&enemyList, ballPos)) currentScreen = Screen.EndScreen;
+                break :blk;
+            },
+            Screen.EndScreen => blk: {
+                if (raylib.isKeyPressed(raylib.KeyboardKey.key_enter)) {
+                    currentScreen = Screen.MainMenu;
+                    numCollisions = 0;
+                    ballPos = raylib.Vector2.init(screenWidth / 2, screenHeight / 2);
+                    enemyList.clearAndFree();
+                    enemyList = std.ArrayList(raylib.Rectangle).init(gpa.allocator());
+                    defer enemyList.deinit();
+                    try enemyList.append(raylib.Rectangle.init(900, 600, 30, 30));
+                }
+                break :blk;
+            },
+        }
 
         // draw
         raylib.beginDrawing();
@@ -148,30 +199,49 @@ pub fn main() anyerror!void {
 
         // raylib.hideCursor();
 
-        const string = try std.fmt.allocPrintZ(test_alloc, "move da ball, x: {d}, y: {d}, #. enemies: {d}, hits: {d}", .{ ballPos.x, ballPos.y, enemyList.items.len, numCollisions });
-        defer test_alloc.free(string);
+        switch (currentScreen) {
+            Screen.MainMenu => blk: {
+                raylib.clearBackground(raylib.Color.white);
+                raylib.drawText("Press Enter to start", 10, 10, 20, raylib.Color.black);
+                break :blk;
+            },
+            Screen.Game => blk: {
+                const string = try std.fmt.allocPrintZ(test_alloc, "move da ball, x: {d}, y: {d}, #. enemies: {d}, hits: {d}", .{ ballPos.x, ballPos.y, enemyList.items.len, numCollisions });
+                defer test_alloc.free(string);
 
-        raylib.clearBackground(raylib.Color.white);
-        raylib.drawText(string, 10, 10, 20, raylib.Color.black);
-        raylib.drawCircleV(ballPos, radius, raylib.Color.green);
-        // raylib.drawLineV(ballPos, mouse_line_aim, raylib.Color.gray);
+                const mouse_line_end = calulateLineToEdgeV(ballPos, mousePos);
 
-        drawEnemies(&enemyList);
-        updateEnemyPos(ballPos, &enemyList);
+                raylib.clearBackground(raylib.Color.white);
+                raylib.drawText(string, 10, 10, 20, raylib.Color.black);
+                raylib.drawCircleV(ballPos, radius, raylib.Color.green);
+                // raylib.drawLineV(ballPos, mouse_line_aim, raylib.Color.gray);
 
-        // check for collision between shot path and target
-        if (raylib.isMouseButtonReleased(raylib.MouseButton.mouse_button_left)) {
-            const collision = checkCollisionLineRec(&enemyList, ballPos, mouse_line_end);
-            if (collision.bool == true) {
-                numCollisions += 1;
-                raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
-                raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
-                _ = enemyList.orderedRemove(collision.rec_idx);
-                // continue;
-            } else {
-                raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
-                try spawnEnemy(mouse_line_end, &enemyList);
-            }
+                drawEnemies(&enemyList);
+                updateEnemyPos(ballPos, &enemyList);
+
+                // check for collision between shot path and target
+                if (raylib.isMouseButtonReleased(raylib.MouseButton.mouse_button_left)) {
+                    const collision = checkCollisionLineRec(&enemyList, ballPos, mouse_line_end);
+                    if (collision.bool == true) {
+                        numCollisions += 1;
+                        raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
+                        raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
+                        _ = enemyList.orderedRemove(collision.rec_idx);
+                        // continue;
+                    } else {
+                        raylib.drawLineV(ballPos, mouse_line_end, raylib.Color.gray);
+                        try spawnEnemy(mouse_line_end, &enemyList);
+                    }
+                }
+                break :blk;
+            },
+            Screen.EndScreen => blk: { // crashes on exit, due to alloc of deathStr. There's a leak here somehere
+                raylib.clearBackground(raylib.Color.white);
+                raylib.drawText("Game Over", screenWidth / 2 - 20, screenHeight / 2 - 25, 20, raylib.Color.red);
+                const deathStr = try std.fmt.allocPrintZ(test_alloc, "You hit: {d} rectangles", .{numCollisions});
+                raylib.drawText(deathStr, screenWidth / 2 - 20, screenHeight / 2, 20, raylib.Color.red);
+                break :blk;
+            },
         }
     }
 }
