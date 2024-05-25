@@ -48,7 +48,7 @@ jobs:
         run: zig fetch --save https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz
           
       - name: Build binary
-        run: zig build -Doptimize=ReleaseSafe -Dtarget=${{ matrix.target }}
+        run: zig build -Doptimize=ReleaseSafe #-Dtarget=${{ matrix.target }}
         
       - name: Release
         uses: softprops/action-gh-release@v1
