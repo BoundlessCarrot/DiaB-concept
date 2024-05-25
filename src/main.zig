@@ -160,22 +160,6 @@ pub fn main() anyerror!void {
                 break :blk;
             },
             Screen.Game => blk: {
-                // Get input and update
-                if (ballPos.x >= screenWidth - radius_int) ballPos.x = screenWidth - radius_int;
-                if (ballPos.x <= 0 + radius_int) ballPos.x = 0 + radius_int;
-                if (ballPos.y >= screenHeight - radius_int) ballPos.y = screenHeight - radius_int;
-                if (ballPos.y <= 0 + radius_int) ballPos.y = 0 + radius_int;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_w)) ballPos.y -= 2.0;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_a)) ballPos.x -= 2.0;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_s)) ballPos.y += 2.0;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_d)) ballPos.x += 2.0;
-
-                mousePos = raylib.getMousePosition();
-                mousePos.x = @as(f32, @floatFromInt(raylib.getMouseX()));
-                mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
-
-                // const mouse_line_aim = normalizeVector(subtractVectors(ballPos, mouse_line_end));
-
                 if (checkCollisionEnemyPlayer(&enemyList, ballPos)) currentScreen = Screen.EndScreen;
                 break :blk;
             },
@@ -206,6 +190,22 @@ pub fn main() anyerror!void {
                 break :blk;
             },
             Screen.Game => blk: {
+                // Get input and update
+                if (ballPos.x >= screenWidth - radius_int) ballPos.x = screenWidth - radius_int;
+                if (ballPos.x <= 0 + radius_int) ballPos.x = 0 + radius_int;
+                if (ballPos.y >= screenHeight - radius_int) ballPos.y = screenHeight - radius_int;
+                if (ballPos.y <= 0 + radius_int) ballPos.y = 0 + radius_int;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_w)) ballPos.y -= 2.0;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_a)) ballPos.x -= 2.0;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_s)) ballPos.y += 2.0;
+                if (raylib.isKeyDown(raylib.KeyboardKey.key_d)) ballPos.x += 2.0;
+
+                mousePos = raylib.getMousePosition();
+                mousePos.x = @as(f32, @floatFromInt(raylib.getMouseX()));
+                mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
+
+                // const mouse_line_aim = normalizeVector(subtractVectors(ballPos, mouse_line_end));
+
                 const string = try std.fmt.allocPrintZ(test_alloc, "move da ball, x: {d}, y: {d}, #. enemies: {d}, hits: {d}", .{ ballPos.x, ballPos.y, enemyList.items.len, numCollisions });
                 defer test_alloc.free(string);
 
@@ -235,10 +235,11 @@ pub fn main() anyerror!void {
                 }
                 break :blk;
             },
-            Screen.EndScreen => blk: { // crashes on exit, due to alloc of deathStr. There's a leak here somehere
+            Screen.EndScreen => blk: {
+                const deathStr = try std.fmt.allocPrintZ(test_alloc, "You hit: {d} rectangles", .{numCollisions});
+                defer test_alloc.free(deathStr);
                 raylib.clearBackground(raylib.Color.white);
                 raylib.drawText("Game Over", screenWidth / 2 - 20, screenHeight / 2 - 25, 20, raylib.Color.red);
-                const deathStr = try std.fmt.allocPrintZ(test_alloc, "You hit: {d} rectangles", .{numCollisions});
                 raylib.drawText(deathStr, screenWidth / 2 - 20, screenHeight / 2, 20, raylib.Color.red);
                 break :blk;
             },
