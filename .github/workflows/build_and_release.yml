@@ -58,10 +58,10 @@ jobs:
           zig build -Doptimize=ReleaseSafe
           mv zig-out/bin/mach-mess zig-out/bin/diab-concept_${{ matrix.os }}-${{ matrix.target }}
 
-     - name: Release
-       uses: softprops/action-gh-release@v1
+      - name: Release
+        uses: softprops/action-gh-release@v1
        # if: github.ref == 'refs/heads/main'
-       with:
+        with:
          tag_name: ${{ github.event.inputs.release_tag }}
          files: |
            zig-out/bin/*
