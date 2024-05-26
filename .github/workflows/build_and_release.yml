@@ -46,7 +46,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libx11-dev libgtk-4-dev build-essential
 
-      - name: Set SDKROOT for macOS
+      - name: Set SDKROOT (macOS)
         if: matrix.os == 'macos-latest'
         run: echo "export SDKROOT=$(xcrun --show-sdk-path)" >> $GITHUB_ENV
 
@@ -55,8 +55,15 @@ jobs:
           
       - name: Build binary
         run: |
-          zig build -Doptimize=ReleaseSafe
-          mv zig-out/bin/mach-mess zig-out/bin/diab-concept_${{ matrix.os }}-${{ matrix.target }}
+          zig build-exe src/main.zig -Doptimize=ReleaseSafe
+
+      - name: Rename binary (MacOS, Ubuntu)
+        if: matrix.os != 'windows-latest'
+        run: mv zig-out/bin/mach-mess zig-out/bin/diab-concept_${{ matrix.os }}-${{ matrix.target }}
+
+      - name: Rename binary (Windows)
+        if: matrix.os == 'windows-latest'
+        run: ren zig-out\bin\mach-mess zig-out\bin\diab-concept_${{ matrix.os }}-${{ matrix.target }}
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -65,32 +72,3 @@ jobs:
          tag_name: 'latest'
          files: |
            zig-out/bin/*
-
-      # - name: Changelog
-      #   uses: scottbrenner/generate-changelog-action@master
-      #   id: Changelog
-      #   env:
-      #     REPO: ${{ github.repository }}
-      #
-      # - name: Create Release
-      #   id: create_release
-      #   uses: actions/create-release@latest
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     tag_name: ${{ github.ref }}
-      #     release_name: Release ${{ github.ref }}
-      #     body: |
-      #       ${{ steps.Changelog.outputs.changelog }}
-      #     draft: false
-      #     prerelease: false
-      #
-      # - name: Upload Release Asset
-      #   id: upload-release-asset 
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-      #     asset_path: zig-out/bin/diab-concept_${{ matrix.os }}-${{ matrix.target }}
-      #     asset_name: diab-concept_${{ matrix.os }}-${{ matrix.target }}
