@@ -60,7 +60,7 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           mv zig-out/bin/mach-mess zig-out/bin/diab-concept_${{ matrix.os }}-${{ matrix.target }}
-          chmod a=x zig-out/bin/diab-concept_${{ matrix.os }}-${{ matrix.target }}
+          chmod +x zig-out/bin/diab-concept_${{ matrix.os }}-${{ matrix.target }}
 
       - name: Rename binary (Windows)
         if: matrix.os == 'windows-latest'
