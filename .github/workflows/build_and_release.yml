@@ -55,7 +55,7 @@ jobs:
           
       - name: Build binary
         run: |
-          zig build-exe src/main.zig -Doptimize=ReleaseSafe
+          zig build -Doptimize=ReleaseSafe
 
       - name: Rename binary (MacOS, Ubuntu)
         if: matrix.os != 'windows-latest'
