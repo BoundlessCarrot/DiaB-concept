@@ -62,7 +62,7 @@ jobs:
         uses: softprops/action-gh-release@v1
        # if: github.ref == 'refs/heads/main'
         with:
-         tag_name: ${{ github.event.inputs.release_tag }}
+         tag_name: 'latest'
          files: |
            zig-out/bin/*
 
