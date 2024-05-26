@@ -25,7 +25,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PR_NUMBER: ${{ github.event.number }}
+      PR_NUMBER: $(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
       
     steps:
       - uses: actions/checkout@v2
