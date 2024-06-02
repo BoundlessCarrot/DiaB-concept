@@ -247,7 +247,7 @@ pub fn main() anyerror!void {
                 updateEnemyPos(ballPos, &enemyList);
 
                 // check for collision between shot path and target
-                if (raylib.isMouseButtonPressed(raylib.MouseButton.mouse_button_left)) {
+                if (raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left)) {
                     const collision = checkCollisionLineRec(&enemyList, ballPos, aimPath);
                     if (collision.bool == true) {
                         numCollisions += 1;
