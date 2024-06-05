@@ -156,6 +156,28 @@ fn spawnInitialEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     }
 }
 
+fn updatePlayerPos(player: *vec2f) void {
+    if (player.x >= screenWidth - radius_int) player.x = screenWidth - radius_int;
+    if (player.x <= 0 + radius_int) player.x = 0 + radius_int;
+    if (player.y >= screenHeight - radius_int) player.y = screenHeight - radius_int;
+    if (player.y <= 0 + radius_int) player.y = 0 + radius_int;
+    if (raylib.isKeyDown(raylib.KeyboardKey.key_w)) player.y -= 2.5;
+    if (raylib.isKeyDown(raylib.KeyboardKey.key_a)) player.x -= 2.5;
+    if (raylib.isKeyDown(raylib.KeyboardKey.key_s)) player.y += 2.5;
+    if (raylib.isKeyDown(raylib.KeyboardKey.key_d)) player.x += 2.5;
+}
+
+fn updateMousePos(mousePos: *vec2f) void {
+    mousePos.* = raylib.getMousePosition();
+    mousePos.x = @as(f32, @floatFromInt(raylib.getMouseX()));
+    mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
+}
+
+fn drawPlayer(player: vec2f, aimLine: vec2f) void {
+    raylib.drawCircleV(player, radius, raylib.Color.green);
+    raylib.drawLineV(player, aimLine, raylib.Color.gray);
+}
+
 // fn showEndScreen(numCollisions: usize, allocator: std.mem.Allocator) !void {
 //     raylib.beginDrawing();
 //     defer raylib.endDrawing();
@@ -208,7 +230,7 @@ pub fn main() anyerror!void {
                     numCollisions = 0;
                     ballPos = vec2f.init(screenWidth / 2, screenHeight / 2);
                     try clearEnemyList(&enemyList);
-                    try enemyList.append(raylib.Rectangle.init(900, 600, 30, 30));
+                    try spawnInitialEnemies(&enemyList);
                 }
                 break :blk;
             },
@@ -227,35 +249,27 @@ pub fn main() anyerror!void {
                 break :blk;
             },
             Screen.Game => blk: {
+                raylib.clearBackground(raylib.Color.white);
+
                 // Get input and update
-                if (ballPos.x >= screenWidth - radius_int) ballPos.x = screenWidth - radius_int;
-                if (ballPos.x <= 0 + radius_int) ballPos.x = 0 + radius_int;
-                if (ballPos.y >= screenHeight - radius_int) ballPos.y = screenHeight - radius_int;
-                if (ballPos.y <= 0 + radius_int) ballPos.y = 0 + radius_int;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_w)) ballPos.y -= 2.5;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_a)) ballPos.x -= 2.5;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_s)) ballPos.y += 2.5;
-                if (raylib.isKeyDown(raylib.KeyboardKey.key_d)) ballPos.x += 2.5;
+                updatePlayerPos(&ballPos);
+                updateMousePos(&mousePos);
 
-                mousePos = raylib.getMousePosition();
-                mousePos.x = @as(f32, @floatFromInt(raylib.getMouseX()));
-                mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
-
+                // debug text
                 const string = try std.fmt.allocPrintZ(test_alloc, "move da ball, x: {d}, y: {d}, #. enemies: {d}, hits: {d}", .{ ballPos.x, ballPos.y, enemyList.items.len, numCollisions });
                 defer test_alloc.free(string);
+                raylib.drawText(string, 10, 10, 20, raylib.Color.black);
 
+                // get aim path (to end of screen) and aim line (3x radius)
                 const aimPath = calculateAimPathV(ballPos, mousePos);
                 const aimLine = calculateAimLineV(ballPos, mousePos);
 
-                raylib.clearBackground(raylib.Color.white);
-                raylib.drawText(string, 10, 10, 20, raylib.Color.black);
-                raylib.drawCircleV(ballPos, radius, raylib.Color.green);
-                raylib.drawLineV(ballPos, aimLine, raylib.Color.gray);
-
+                drawPlayer(ballPos, aimLine);
                 drawEnemies(&enemyList);
                 updateEnemyPos(ballPos, &enemyList);
 
                 // check for collision between shot path and target
+                // TODO: Make this hitreg instead of hitscan
                 if (raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left)) {
                     const collision = checkCollisionLineRec(&enemyList, ballPos, aimPath);
                     if (collision.bool == true) {
