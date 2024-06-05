@@ -32,6 +32,10 @@ const Screen = enum {
     EndScreen,
 };
 
+fn clearEnemyList(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
+    enemyList.resize(0) catch @panic("Failed to clear enemy list");
+}
+
 fn normalMouseAngle(center: vec2f, mouse: vec2f) f32 {
     return std.math.atan2(mouse.y - center.y, mouse.x - center.x);
 }
@@ -203,9 +207,7 @@ pub fn main() anyerror!void {
                     currentScreen = Screen.MainMenu;
                     numCollisions = 0;
                     ballPos = vec2f.init(screenWidth / 2, screenHeight / 2);
-                    enemyList.clearAndFree();
-                    enemyList = std.ArrayList(raylib.Rectangle).init(gpa.allocator());
-                    defer enemyList.deinit();
+                    try clearEnemyList(&enemyList);
                     try enemyList.append(raylib.Rectangle.init(900, 600, 30, 30));
                 }
                 break :blk;
