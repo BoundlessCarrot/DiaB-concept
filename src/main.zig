@@ -144,6 +144,14 @@ fn checkCollisionEnemyPlayer(enemyList: *std.ArrayList(raylib.Rectangle), player
     return false;
 }
 
+fn spawnInitialEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
+    for (0..8) |_| {
+        const coords = vec2f.init(rand.float(f32) * 1080, rand.float(f32) * 720);
+        const rec = raylib.Rectangle.init(coords.x, coords.y, 10, 10);
+        try enemyList.append(rec);
+    }
+}
+
 // fn showEndScreen(numCollisions: usize, allocator: std.mem.Allocator) !void {
 //     raylib.beginDrawing();
 //     defer raylib.endDrawing();
@@ -173,12 +181,11 @@ pub fn main() anyerror!void {
     var enemyList: std.ArrayList(raylib.Rectangle) = std.ArrayList(raylib.Rectangle).init(gpa.allocator());
     defer enemyList.deinit();
 
+    try spawnInitialEnemies(&enemyList);
+
     var currentScreen = Screen.MainMenu;
     // var frameCounter: usize = 0;
     raylib.setTargetFPS(60);
-
-    const rec = raylib.Rectangle.init(900, 600, 30, 30);
-    try enemyList.append(rec);
 
     while (!raylib.windowShouldClose()) {
         switch (currentScreen) {
