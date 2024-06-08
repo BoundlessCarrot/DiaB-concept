@@ -1,3 +1,5 @@
+/// This file contains the game logic for the game. It is responsible for updating the game state
+/// The game state is managed by the main loop in the main.zig file
 const std = @import("std");
 const raylib = @import("raylib");
 
@@ -15,24 +17,32 @@ const radius_int = settings.radius_int;
 var dprng = std.rand.DefaultPrng.init(0);
 const rand = dprng.random();
 
+/// Type to hold collision information between a shot and an enemy
 const CollisionTup = struct {
+    /// Whether the shot collided with an enemy
     bool: bool,
+    /// The point of collision
     point: vec2f,
+    /// The index of the rectangle in the enemy list that was hit
     rec_idx: usize,
 };
 
+/// Clear the enemy list
 pub fn clearEnemyList(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     enemyList.resize(0) catch @panic("Failed to clear enemy list");
 }
 
+/// Angle from the player to the mouse - straight through
 fn normalMouseAngle(center: vec2f, mouse: vec2f) f32 {
     return std.math.atan2(mouse.y - center.y, mouse.x - center.x);
 }
 
+/// Angle from the player to the mouse - mirrored
 fn mirroredMouseAngle(center: vec2f, mouse: vec2f) f32 {
     return std.math.atan2(center.y - mouse.y, center.x - mouse.x);
 }
 
+/// Calculate the path for the player to shoot at, to the edge of the screen
 pub fn calculateAimPathV(player: vec2f, mouse: vec2f) vec2f {
     const angle = mouseAngle(player, mouse);
     const cos_angle = std.math.cos(angle);
@@ -64,6 +74,7 @@ pub fn calculateAimPathV(player: vec2f, mouse: vec2f) vec2f {
     return vec2f.init(max_x, max_y);
 }
 
+/// Calculate the aiming line for the player, to 3x the radius of the player
 pub fn calculateAimLineV(player: vec2f, mouse: vec2f) vec2f {
     const angle = mouseAngle(player, mouse);
     const line_length = radius * 3; // Adjust this value to change the line length
@@ -74,6 +85,7 @@ pub fn calculateAimLineV(player: vec2f, mouse: vec2f) vec2f {
     return vec2f.init(end_x, end_y);
 }
 
+/// Add an enemy to the enemy list
 pub fn spawnEnemy(missedShotCoords: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     for (0..rand.intRangeAtMost(usize, 1, 5)) |_| {
         const offset = vec2f.init(rand.float(f32) * 10, rand.float(f32) * 10);
@@ -82,12 +94,14 @@ pub fn spawnEnemy(missedShotCoords: vec2f, enemyList: *std.ArrayList(raylib.Rect
     }
 }
 
+/// Draw the enemies to the screen
 pub fn drawEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) void {
     for (enemyList.items) |enemy| {
         raylib.drawRectangleRec(enemy, raylib.Color.red);
     }
 }
 
+/// Update the position of the enemies on the screen
 pub fn updateEnemyPos(player: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) void {
     for (0..enemyList.items.len) |i| {
         const rec = enemyList.items[i];
@@ -99,15 +113,18 @@ pub fn updateEnemyPos(player: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)
     }
 }
 
+/// HELPER FUNCTION: Subtract two vectors
 fn subtractVectors(a: vec2f, b: vec2f) vec2f {
     return vec2f.init(a.x - b.x, a.y - b.y);
 }
 
+/// HELPER FUNCTION: Normalize a vector
 fn normalizeVector(v: vec2f) vec2f {
     const len = std.math.sqrt(v.x * v.x + v.y * v.y);
     return vec2f.init(v.x / len, v.y / len);
 }
 
+/// Check if a shot has collided with an enemy
 pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start: vec2f, line_end: vec2f) CollisionTup {
     var tup = CollisionTup{ .bool = false, .point = undefined, .rec_idx = undefined };
     outer: for (enemyList.items, 0..) |rec, i| {
@@ -127,6 +144,7 @@ pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_s
     return tup;
 }
 
+/// Check if an enemy has collided with the player
 pub fn checkCollisionEnemyPlayer(enemyList: *std.ArrayList(raylib.Rectangle), player: vec2f) bool {
     for (enemyList.items) |rec| {
         if (raylib.checkCollisionCircleRec(player, radius, rec)) {
@@ -137,6 +155,7 @@ pub fn checkCollisionEnemyPlayer(enemyList: *std.ArrayList(raylib.Rectangle), pl
     return false;
 }
 
+/// Spawn starting enemies, with randomized positions
 pub fn spawnInitialEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     for (0..8) |_| {
         const coords = vec2f.init(rand.float(f32) * 1080, rand.float(f32) * 720);
@@ -145,6 +164,7 @@ pub fn spawnInitialEnemies(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     }
 }
 
+/// Update the player's position based on input
 pub fn updatePlayerPos(player: *vec2f) void {
     if (player.x >= screenWidth - radius_int) player.x = screenWidth - radius_int;
     if (player.x <= 0 + radius_int) player.x = 0 + radius_int;
@@ -156,12 +176,14 @@ pub fn updatePlayerPos(player: *vec2f) void {
     if (raylib.isKeyDown(raylib.KeyboardKey.key_d)) player.x += 2.5;
 }
 
+/// Update the mouse position
 pub fn updateMousePos(mousePos: *vec2f) void {
     mousePos.* = raylib.getMousePosition();
     mousePos.x = @as(f32, @floatFromInt(raylib.getMouseX()));
     mousePos.y = @as(f32, @floatFromInt(raylib.getMouseY()));
 }
 
+/// Draw the player and aiming guide to the screen
 pub fn drawPlayer(player: vec2f, aimLine: vec2f) void {
     raylib.drawCircleV(player, radius, raylib.Color.green);
     raylib.drawLineV(player, aimLine, raylib.Color.gray);
