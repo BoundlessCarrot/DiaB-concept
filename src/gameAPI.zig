@@ -18,13 +18,18 @@ var dprng = std.rand.DefaultPrng.init(0);
 const rand = dprng.random();
 
 /// Type to hold collision information between a shot and an enemy
-const CollisionTup = struct {
+pub const CollisionEvent = struct {
     /// Whether the shot collided with an enemy
     bool: bool,
     /// The point of collision
     point: vec2f,
     /// The index of the rectangle in the enemy list that was hit
     rec_idx: usize,
+};
+
+pub const Projectile = struct {
+    pos: vec2f,
+    vel: vec2f,
 };
 
 /// Clear the enemy list
@@ -125,8 +130,8 @@ fn normalizeVector(v: vec2f) vec2f {
 }
 
 /// Check if a shot has collided with an enemy
-pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start: vec2f, line_end: vec2f) CollisionTup {
-    var tup = CollisionTup{ .bool = false, .point = undefined, .rec_idx = undefined };
+pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start: vec2f, line_end: vec2f) CollisionEvent {
+    var tup = CollisionEvent{ .bool = false, .point = undefined, .rec_idx = undefined };
     outer: for (enemyList.items, 0..) |rec, i| {
         var x: f32 = rec.x;
         while (x <= rec.x + rec.width) : (x += 1.0) {
@@ -134,7 +139,7 @@ pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_s
             while (y <= rec.y + rec.height) : (y += 1.0) {
                 const collision_point = vec2f.init(x, y);
                 if (raylib.checkCollisionPointLine(collision_point, line_start, line_end, 1)) {
-                    tup = CollisionTup{ .bool = true, .point = collision_point, .rec_idx = i };
+                    tup = CollisionEvent{ .bool = true, .point = collision_point, .rec_idx = i };
                     break :outer;
                 }
             }
@@ -188,3 +193,24 @@ pub fn drawPlayer(player: vec2f, aimLine: vec2f) void {
     raylib.drawCircleV(player, radius, raylib.Color.green);
     raylib.drawLineV(player, aimLine, raylib.Color.gray);
 }
+
+pub fn isPlayerShooting() bool {
+    return raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left);
+}
+
+pub fn doCollisionEvent(numCollisions: usize, ballPos: vec2f, enemyList: *std.ArrayList(raylib.Rectangle), collision: CollisionEvent) void {
+    numCollisions += 1;
+    // raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
+    raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
+    _ = enemyList.orderedRemove(collision.rec_idx);
+}
+
+pub fn doMissEvent(ballPos: vec2f.Vector2, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) void {
+    raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
+    try spawnEnemy(aimPath, &enemyList);
+}
+
+// fn addProjectile(projectileList: *std.ArrayList(Projectile), player: vec2f, aimPath: vec2f) void {
+//     _ = aimPath;
+//     try projectileList.append(Projectile{ .pos = player, .vel = vec2f.init(0, 0) });
+// }

@@ -24,6 +24,10 @@ const updateMousePos = gameAPI.updateMousePos;
 const drawPlayer = gameAPI.drawPlayer;
 const drawEnemies = gameAPI.drawEnemies;
 const updateEnemyPos = gameAPI.updateEnemyPos;
+const isPlayerShooting = gameAPI.isPlayerShooting;
+const doCollisionEvent = gameAPI.doCollisionEvent;
+const doMissEvent = gameAPI.doMissEvent;
+const CollisionEvent = gameAPI.CollisionEvent;
 
 const Screen = enum {
     MainMenu,
@@ -123,17 +127,11 @@ pub fn main() anyerror!void {
 
                 // check for collision between shot path and target
                 // TODO: Make this hitreg instead of hitscan
-                if (raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left)) {
+                if (isPlayerShooting()) {
                     const collision = checkCollisionLineRec(&enemyList, ballPos, aimPath);
                     if (collision.bool == true) {
-                        numCollisions += 1;
-                        raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
-                        raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
-                        _ = enemyList.orderedRemove(collision.rec_idx);
-                    } else {
-                        raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
-                        try spawnEnemy(aimPath, &enemyList);
-                    }
+                        doCollisionEvent(numCollisions, ballPos, enemyList, collision);
+                    } else doMissEvent(ballPos, aimPath, &enemyList);
                 }
                 break :blk;
             },
