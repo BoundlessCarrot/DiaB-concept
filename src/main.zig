@@ -14,11 +14,12 @@ const radius = settings.radius;
 const gameAPI = @import("gameAPI.zig");
 const calculateAimPathV = gameAPI.calculateAimPathV;
 const calculateAimLineV = gameAPI.calculateAimLineV;
-const checkCollisionLineRec = gameAPI.checkCollisionLineRec;
+// const checkCollisionLineRec = gameAPI.checkCollisionLineRec;
 const checkCollisionEnemyPlayer = gameAPI.checkCollisionEnemyPlayer;
 const spawnEnemy = gameAPI.spawnEnemy;
 const spawnInitialEnemies = gameAPI.spawnInitialEnemies;
 const clearEnemyList = gameAPI.clearEnemyList;
+const clearProjectileList = gameAPI.clearProjectiles;
 const updatePlayerPos = gameAPI.updatePlayerPos;
 const updateMousePos = gameAPI.updateMousePos;
 const drawPlayer = gameAPI.drawPlayer;
@@ -27,7 +28,13 @@ const updateEnemyPos = gameAPI.updateEnemyPos;
 const isPlayerShooting = gameAPI.isPlayerShooting;
 const doCollisionEvent = gameAPI.doCollisionEvent;
 const doMissEvent = gameAPI.doMissEvent;
+const checkProjectileCollision = gameAPI.checkProjectileCollision;
+const addProjectile = gameAPI.addProjectile;
+const drawProjectiles = gameAPI.drawProjectiles;
+const updateProjectiles = gameAPI.updateProjectiles;
+
 const CollisionEvent = gameAPI.CollisionEvent;
+const Projectile = gameAPI.Projectile;
 
 const Screen = enum {
     MainMenu,
@@ -64,6 +71,9 @@ pub fn main() anyerror!void {
     var enemyList: std.ArrayList(raylib.Rectangle) = std.ArrayList(raylib.Rectangle).init(gpa.allocator());
     defer enemyList.deinit();
 
+    var projectileList: std.ArrayList(Projectile) = std.ArrayList(Projectile).init(gpa.allocator());
+    defer projectileList.deinit();
+
     try spawnInitialEnemies(&enemyList);
 
     var currentScreen = Screen.MainMenu;
@@ -87,6 +97,7 @@ pub fn main() anyerror!void {
                     numCollisions = 0;
                     ballPos = vec2f.init(screenWidth / 2, screenHeight / 2);
                     try clearEnemyList(&enemyList);
+                    try clearProjectileList(&projectileList);
                     try spawnInitialEnemies(&enemyList);
                 }
                 break :blk;
@@ -125,14 +136,21 @@ pub fn main() anyerror!void {
                 drawEnemies(&enemyList);
                 updateEnemyPos(ballPos, &enemyList);
 
+                // draw projectiles
+                drawProjectiles(&projectileList);
+                updateProjectiles(&projectileList);
+
+                const collision = checkProjectileCollision(&enemyList, &projectileList);
+
                 // check for collision between shot path and target
-                // TODO: Make this hitreg instead of hitscan
                 if (isPlayerShooting()) {
-                    const collision = checkCollisionLineRec(&enemyList, ballPos, aimPath);
-                    if (collision.bool == true) {
-                        doCollisionEvent(&numCollisions, ballPos, &enemyList, collision);
-                    } else try doMissEvent(ballPos, aimPath, &enemyList);
+                    try addProjectile(&projectileList, ballPos, aimPath);
                 }
+
+                if (collision.bool == true) {
+                    doCollisionEvent(numCollisions, &enemyList, &projectileList, collision);
+                } else doMissEvent(ballPos, aimPath, &enemyList);
+
                 break :blk;
             },
             Screen.EndScreen => blk: {

@@ -25,6 +25,7 @@ pub const CollisionEvent = struct {
     point: vec2f,
     /// The index of the rectangle in the enemy list that was hit
     rec_idx: usize,
+    proj_idx: usize,
 };
 
 pub const Projectile = struct {
@@ -130,22 +131,36 @@ fn normalizeVector(v: vec2f) vec2f {
 }
 
 /// Check if a shot has collided with an enemy
-pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start: vec2f, line_end: vec2f) CollisionEvent {
-    var tup = CollisionEvent{ .bool = false, .point = undefined, .rec_idx = undefined };
-    outer: for (enemyList.items, 0..) |rec, i| {
-        var x: f32 = rec.x;
-        while (x <= rec.x + rec.width) : (x += 1.0) {
-            var y: f32 = rec.y;
-            while (y <= rec.y + rec.height) : (y += 1.0) {
-                const collision_point = vec2f.init(x, y);
-                if (raylib.checkCollisionPointLine(collision_point, line_start, line_end, 1)) {
-                    tup = CollisionEvent{ .bool = true, .point = collision_point, .rec_idx = i };
-                    break :outer;
-                }
+// pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start: vec2f, line_end: vec2f) CollisionEvent {
+//     var tup = CollisionEvent{ .bool = false, .point = undefined, .rec_idx = undefined };
+//     outer: for (enemyList.items, 0..) |rec, i| {
+//         var x: f32 = rec.x;
+//         while (x <= rec.x + rec.width) : (x += 1.0) {
+//             var y: f32 = rec.y;
+//             while (y <= rec.y + rec.height) : (y += 1.0) {
+//                 const collision_point = vec2f.init(x, y);
+//                 if (raylib.checkCollisionPointLine(collision_point, line_start, line_end, 1)) {
+//                     tup = CollisionEvent{ .bool = true, .point = collision_point, .rec_idx = i };
+//                     break :outer;
+//                 }
+//             }
+//         }
+//     }
+//
+//     return tup;
+// }
+
+// TODO: what if 2 projectiles collide at the same time?
+pub fn checkProjectileCollision(enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile)) CollisionEvent {
+    var tup = CollisionEvent{ .bool = false, .point = undefined, .rec_idx = undefined, .proj_idx = undefined };
+    outer: for (projectiles.items, 0..) |proj, idx| {
+        for (enemyList.items, 0..) |rec, i| {
+            if (raylib.checkCollisionCircleRec(proj.pos, 5, rec)) {
+                tup = CollisionEvent{ .bool = true, .point = proj.pos, .rec_idx = i, .proj_idx = idx };
+                break :outer;
             }
         }
     }
-
     return tup;
 }
 
@@ -198,19 +213,38 @@ pub fn isPlayerShooting() bool {
     return raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left);
 }
 
-pub fn doCollisionEvent(numCollisions: *usize, ballPos: vec2f, enemyList: *std.ArrayList(raylib.Rectangle), collision: CollisionEvent) void {
-    numCollisions.* += 1;
-    // raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
-    raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
+pub fn doCollisionEvent(numCollisions: usize, enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile), collision: CollisionEvent) void {
+    numCollisions += 1;
+
+    _ = projectiles.orderedRemove(collision.proj_idx);
     _ = enemyList.orderedRemove(collision.rec_idx);
 }
 
-pub fn doMissEvent(ballPos: vec2f, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
+pub fn doMissEvent(ballPos: vec2f, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) void {
     raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
     try spawnEnemy(aimPath, enemyList);
 }
 
-// fn addProjectile(projectileList: *std.ArrayList(Projectile), player: vec2f, aimPath: vec2f) void {
-//     _ = aimPath;
-//     try projectileList.append(Projectile{ .pos = player, .vel = vec2f.init(0, 0) });
-// }
+pub fn addProjectile(projectiles: *std.ArrayList(Projectile), player: vec2f, aimPath: vec2f) !void {
+    const vel = subtractVectors(aimPath, player);
+    const normalized = normalizeVector(vel);
+    const newProjectile = Projectile{ .pos = player, .vel = normalized };
+    try projectiles.append(newProjectile);
+}
+
+pub fn updateProjectiles(projectiles: *std.ArrayList(Projectile)) void {
+    for (0..projectiles.items.len) |i| {
+        const proj = projectiles.items[i];
+        projectiles.items[i] = Projectile{ .pos = vec2f.init(proj.pos.x + proj.vel.x * 5, proj.pos.y + proj.vel.y * 5), .vel = proj.vel };
+    }
+}
+
+pub fn drawProjectiles(projectiles: *std.ArrayList(Projectile)) void {
+    for (projectiles.items) |proj| {
+        raylib.drawCircleV(proj.pos, 5, raylib.Color.blue);
+    }
+}
+
+pub fn clearProjectiles(projectiles: *std.ArrayList(Projectile)) !void {
+    projectiles.resize(0) catch @panic("Failed to clear projectile list");
+}
