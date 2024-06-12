@@ -198,16 +198,16 @@ pub fn isPlayerShooting() bool {
     return raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left);
 }
 
-pub fn doCollisionEvent(numCollisions: usize, ballPos: vec2f, enemyList: *std.ArrayList(raylib.Rectangle), collision: CollisionEvent) void {
-    numCollisions += 1;
+pub fn doCollisionEvent(numCollisions: *usize, ballPos: vec2f, enemyList: *std.ArrayList(raylib.Rectangle), collision: CollisionEvent) void {
+    numCollisions.* += 1;
     // raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
     raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
     _ = enemyList.orderedRemove(collision.rec_idx);
 }
 
-pub fn doMissEvent(ballPos: vec2f.Vector2, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) void {
+pub fn doMissEvent(ballPos: vec2f, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
-    try spawnEnemy(aimPath, &enemyList);
+    try spawnEnemy(aimPath, enemyList);
 }
 
 // fn addProjectile(projectileList: *std.ArrayList(Projectile), player: vec2f, aimPath: vec2f) void {

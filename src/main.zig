@@ -130,8 +130,8 @@ pub fn main() anyerror!void {
                 if (isPlayerShooting()) {
                     const collision = checkCollisionLineRec(&enemyList, ballPos, aimPath);
                     if (collision.bool == true) {
-                        doCollisionEvent(numCollisions, ballPos, enemyList, collision);
-                    } else doMissEvent(ballPos, aimPath, &enemyList);
+                        doCollisionEvent(&numCollisions, ballPos, &enemyList, collision);
+                    } else try doMissEvent(ballPos, aimPath, &enemyList);
                 }
                 break :blk;
             },
