@@ -15,14 +15,14 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = "mach-mess",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    // const lib = b.addStaticLibrary(.{
+    //     .name = "mach-mess",
+    //     // In this case the main source file is merely a path, however, in more
+    //     // complicated build scripts, this could be a generated file.
+    //     .root_source_file = b.path("src/root.zig"),
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
 
     const raylib_dep = b.dependency("raylib-zig", .{
         .target = target,
@@ -30,17 +30,17 @@ pub fn build(b: *std.Build) void {
     });
 
     const raylib = raylib_dep.module("raylib"); // main raylib module
-    const raylib_math = raylib_dep.module("raylib-math"); // raymath module
-    const rlgl = raylib_dep.module("rlgl"); // rlgl module
+    // const raylib_math = raylib_dep.module("raylib-math"); // raymath module
+    // const rlgl = raylib_dep.module("rlgl"); // rlgl module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
-    b.installArtifact(lib);
+    // b.installArtifact(lib);
 
     const exe = b.addExecutable(.{
-        .name = "mach-mess",
+        .name = "DiaB-concept",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
@@ -48,8 +48,8 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibrary(raylib_artifact);
     exe.root_module.addImport("raylib", raylib);
-    exe.root_module.addImport("raylib-math", raylib_math);
-    exe.root_module.addImport("rlgl", rlgl);
+    // exe.root_module.addImport("raylib-math", raylib_math);
+    // exe.root_module.addImport("rlgl", rlgl);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

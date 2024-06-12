@@ -3,7 +3,7 @@ const std = @import("std");
 const raylib = @import("raylib");
 const vec2f = raylib.Vector2;
 
-const rlib_math = @import("raylib-math");
+// const rlib_math = @import("raylib-math");
 // const rlgl = @import("rlgl");
 
 const settings = @import("settings.zig");
