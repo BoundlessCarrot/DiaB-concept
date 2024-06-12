@@ -213,14 +213,15 @@ pub fn isPlayerShooting() bool {
     return raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left);
 }
 
-pub fn doCollisionEvent(numCollisions: usize, enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile), collision: CollisionEvent) void {
-    numCollisions += 1;
+pub fn doCollisionEvent(numCollisions: *usize, enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile), collision: CollisionEvent) void {
+    numCollisions.* += 1;
 
     _ = projectiles.orderedRemove(collision.proj_idx);
     _ = enemyList.orderedRemove(collision.rec_idx);
 }
 
-pub fn doMissEvent(ballPos: vec2f, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) void {
+// TODO: only spawn enemies if the shot missed and hit the edge of the screen (or a certain distance away from the player)
+pub fn doMissEvent(ballPos: vec2f, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
     try spawnEnemy(aimPath, enemyList);
 }

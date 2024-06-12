@@ -148,8 +148,8 @@ pub fn main() anyerror!void {
                 }
 
                 if (collision.bool == true) {
-                    doCollisionEvent(numCollisions, &enemyList, &projectileList, collision);
-                } else doMissEvent(ballPos, aimPath, &enemyList);
+                    doCollisionEvent(&numCollisions, &enemyList, &projectileList, collision);
+                } else try doMissEvent(ballPos, aimPath, &enemyList);
 
                 break :blk;
             },
