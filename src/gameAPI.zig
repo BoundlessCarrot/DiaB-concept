@@ -25,7 +25,12 @@ pub const CollisionEvent = struct {
     point: vec2f,
     /// The index of the rectangle in the enemy list that was hit
     rec_idx: usize,
+    /// The index of the projectile in the projectile list that hit the enemy
     proj_idx: usize,
+
+    pub fn init(coll: bool, point: vec2f, rec_idx: usize, proj_idx: usize) CollisionEvent {
+        return CollisionEvent{ .bool = coll, .point = point, .rec_idx = rec_idx, .proj_idx = proj_idx };
+    }
 };
 
 pub const Projectile = struct {
@@ -36,6 +41,10 @@ pub const Projectile = struct {
 /// Clear the enemy list
 pub fn clearEnemyList(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     enemyList.resize(0) catch @panic("Failed to clear enemy list");
+}
+
+pub fn clearEventList(eventList: *std.ArrayList(CollisionEvent)) !void {
+    eventList.resize(0) catch @panic("Failed to clear event list");
 }
 
 /// Angle from the player to the mouse - straight through
@@ -151,17 +160,19 @@ fn normalizeVector(v: vec2f) vec2f {
 // }
 
 // TODO: what if 2 projectiles collide at the same time?
-pub fn checkProjectileCollision(enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile)) CollisionEvent {
-    var tup = CollisionEvent{ .bool = false, .point = undefined, .rec_idx = undefined, .proj_idx = undefined };
-    outer: for (projectiles.items, 0..) |proj, idx| {
+// TODO: what about misses? they need to be removed from the list
+pub fn checkProjectileCollision(enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile), activeEventList: *std.ArrayList(CollisionEvent)) !void {
+    for (projectiles.items, 0..) |proj, idx| {
         for (enemyList.items, 0..) |rec, i| {
-            if (raylib.checkCollisionCircleRec(proj.pos, 5, rec)) {
-                tup = CollisionEvent{ .bool = true, .point = proj.pos, .rec_idx = i, .proj_idx = idx };
-                break :outer;
+            if (raylib.checkCollisionCircleRec(proj.pos, 3, rec)) {
+                std.debug.print("Collision detected\n", .{});
+                try activeEventList.append(CollisionEvent.init(true, proj.pos, i, idx));
+            } else if (isOutOfBounds(proj.pos)) {
+                std.debug.print("Miss detected\n", .{});
+                try activeEventList.append(CollisionEvent.init(false, undefined, i, idx));
             }
         }
     }
-    return tup;
 }
 
 /// Check if an enemy has collided with the player
@@ -213,6 +224,7 @@ pub fn isPlayerShooting() bool {
     return raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left);
 }
 
+// program crashes with an orderedRemove call for the enemy list, when a shot misses
 pub fn doCollisionEvent(numCollisions: *usize, enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile), collision: CollisionEvent) void {
     numCollisions.* += 1;
 
@@ -221,9 +233,16 @@ pub fn doCollisionEvent(numCollisions: *usize, enemyList: *std.ArrayList(raylib.
 }
 
 // TODO: only spawn enemies if the shot missed and hit the edge of the screen (or a certain distance away from the player)
-pub fn doMissEvent(ballPos: vec2f, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
-    raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
-    try spawnEnemy(aimPath, enemyList);
+pub fn doMissEvent(activeEvent: CollisionEvent, enemyList: *std.ArrayList(raylib.Rectangle), projectileList: *std.ArrayList(Projectile)) !void {
+    // raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
+    // if (isOutOfBounds(activeEvent.point)) {
+    try spawnEnemy(activeEvent.point, enemyList);
+    _ = projectileList.orderedRemove(activeEvent.proj_idx);
+    // }
+}
+
+fn isOutOfBounds(pos: vec2f) bool {
+    return pos.x > screenWidth or pos.y > screenHeight or pos.x < 0 or pos.y < 0;
 }
 
 pub fn addProjectile(projectiles: *std.ArrayList(Projectile), player: vec2f, aimPath: vec2f) !void {
@@ -242,7 +261,7 @@ pub fn updateProjectiles(projectiles: *std.ArrayList(Projectile)) void {
 
 pub fn drawProjectiles(projectiles: *std.ArrayList(Projectile)) void {
     for (projectiles.items) |proj| {
-        raylib.drawCircleV(proj.pos, 5, raylib.Color.blue);
+        raylib.drawCircleV(proj.pos, 3, raylib.Color.blue);
     }
 }
 

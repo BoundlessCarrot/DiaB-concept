@@ -20,6 +20,7 @@ const spawnEnemy = gameAPI.spawnEnemy;
 const spawnInitialEnemies = gameAPI.spawnInitialEnemies;
 const clearEnemyList = gameAPI.clearEnemyList;
 const clearProjectileList = gameAPI.clearProjectiles;
+const clearEventList = gameAPI.clearEventList;
 const updatePlayerPos = gameAPI.updatePlayerPos;
 const updateMousePos = gameAPI.updateMousePos;
 const drawPlayer = gameAPI.drawPlayer;
@@ -74,7 +75,12 @@ pub fn main() anyerror!void {
     var projectileList: std.ArrayList(Projectile) = std.ArrayList(Projectile).init(gpa.allocator());
     defer projectileList.deinit();
 
-    try spawnInitialEnemies(&enemyList);
+    var activeEventList: std.ArrayList(CollisionEvent) = std.ArrayList(CollisionEvent).init(gpa.allocator());
+    defer activeEventList.deinit();
+
+    // try spawnInitialEnemies(&enemyList);
+
+    try spawnEnemy(vec2f.init(100, 100), &enemyList);
 
     var currentScreen = Screen.MainMenu;
     // var frameCounter: usize = 0;
@@ -98,7 +104,7 @@ pub fn main() anyerror!void {
                     ballPos = vec2f.init(screenWidth / 2, screenHeight / 2);
                     try clearEnemyList(&enemyList);
                     try clearProjectileList(&projectileList);
-                    try spawnInitialEnemies(&enemyList);
+                    // try spawnInitialEnemies(&enemyList);
                 }
                 break :blk;
             },
@@ -134,22 +140,28 @@ pub fn main() anyerror!void {
 
                 drawPlayer(ballPos, aimLine);
                 drawEnemies(&enemyList);
-                updateEnemyPos(ballPos, &enemyList);
+                // updateEnemyPos(ballPos, &enemyList);
 
                 // draw projectiles
                 drawProjectiles(&projectileList);
                 updateProjectiles(&projectileList);
-
-                const collision = checkProjectileCollision(&enemyList, &projectileList);
 
                 // check for collision between shot path and target
                 if (isPlayerShooting()) {
                     try addProjectile(&projectileList, ballPos, aimPath);
                 }
 
-                if (collision.bool == true) {
-                    doCollisionEvent(&numCollisions, &enemyList, &projectileList, collision);
-                } else try doMissEvent(ballPos, aimPath, &enemyList);
+                try checkProjectileCollision(&enemyList, &projectileList, &activeEventList);
+
+                for (activeEventList.items) |collision| {
+                    std.debug.print("Collision event: {any}\n", .{collision});
+                    if (collision.bool == true) {
+                        doCollisionEvent(&numCollisions, &enemyList, &projectileList, collision);
+                    } else try doMissEvent(collision, &enemyList, &projectileList);
+                }
+                std.debug.print("Active event list length: {d}\n", .{activeEventList.items.len});
+
+                try clearEventList(&activeEventList);
 
                 break :blk;
             },
@@ -163,4 +175,9 @@ pub fn main() anyerror!void {
             },
         }
     }
+}
+
+fn debugEnemy() void {
+    const enemy = raylib.Rectangle{ .x = screenWidth / 2, .y = screenHeight / 2, .width = 30, .height = 30 };
+    raylib.drawRectangleRec(enemy, raylib.Color.red);
 }
