@@ -6,7 +6,7 @@ I'd also like to get advice from people about how to proceed with certain issues
 ### Tech Stack
 I'm using:
 
-  - Zig (v0.12.0)
+  - Zig (v0.13.0)
   - [Raylib](https://github.com/raysan5/raylib) [bindings for zig](https://github.com/Not-Nik/raylib-zig)
     - Specifically raylib v5.1-dev
 
