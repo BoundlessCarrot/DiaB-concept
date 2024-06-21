@@ -43,6 +43,7 @@ jobs:
           # You can change the name of the tag with this input.
           # Default: 'latest'
           ref: ${{env.PR_NUMBER}}
+          tag-name: ${{env.PR_NUMBER}}
           
       - uses: goto-bus-stop/setup-zig@v2
         name: Setup zig
@@ -77,6 +78,6 @@ jobs:
         uses: softprops/action-gh-release@v1
        # if: github.ref == 'refs/heads/main'
         with:
-         tag_name: 'latest'
+         tag_name: ${{env.PR_NUMBER}}
          files: |
            zig-out/bin/*
