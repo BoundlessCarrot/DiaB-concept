@@ -67,7 +67,17 @@ jobs:
 
       - name: Rename binary (Windows)
         if: matrix.os == 'windows-latest'
-        run: ren zig-out\bin\DiaB-concept zig-out\bin\DiaB-concept_${{ matrix.os }}-${{ matrix.target }}.exe
+        shell: pwsh
+        run: |
+          $binary = Get-ChildItem -Path zig-out\bin -Filter *.exe | Select-Object -First 1
+          if ($binary) {
+            $newName = "DiaB-concept_${{ matrix.os }}-${{ matrix.target }}.exe"
+            Rename-Item -Path $binary.FullName -NewName $newName
+            Write-Output "Renamed $($binary.Name) to $newName"
+          } else {
+            Write-Error "No .exe file found in zig-out\bin"
+            exit 1
+          }
 
       - name: Release
         uses: softprops/action-gh-release@v1
