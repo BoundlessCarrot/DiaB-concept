@@ -2,6 +2,7 @@
 /// The game state is managed by the main loop in the main.zig file
 const std = @import("std");
 const raylib = @import("raylib");
+const raygui = @import("raygui");
 
 const vec2f = raylib.Vector2;
 const ZERO_VECTOR = vec2f.init(0, 0);
