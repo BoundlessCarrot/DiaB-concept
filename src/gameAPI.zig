@@ -25,6 +25,12 @@ pub const CollisionEvent = struct {
     point: vec2f,
     /// The index of the rectangle in the enemy list that was hit
     rec_idx: usize,
+    /// The index of the projectile in the projectile list that hit the enemy
+    proj_idx: usize,
+
+    pub fn init(coll: bool, point: vec2f, rec_idx: usize, proj_idx: usize) CollisionEvent {
+        return CollisionEvent{ .bool = coll, .point = point, .rec_idx = rec_idx, .proj_idx = proj_idx };
+    }
 };
 
 pub const Projectile = struct {
@@ -35,6 +41,10 @@ pub const Projectile = struct {
 /// Clear the enemy list
 pub fn clearEnemyList(enemyList: *std.ArrayList(raylib.Rectangle)) !void {
     enemyList.resize(0) catch @panic("Failed to clear enemy list");
+}
+
+pub fn clearEventList(eventList: *std.ArrayList(CollisionEvent)) !void {
+    eventList.resize(0) catch @panic("Failed to clear event list");
 }
 
 /// Angle from the player to the mouse - straight through
@@ -92,7 +102,8 @@ pub fn calculateAimLineV(player: vec2f, mouse: vec2f) vec2f {
 
 /// Add an enemy to the enemy list
 pub fn spawnEnemy(missedShotCoords: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
-    for (0..rand.intRangeAtMost(usize, 1, 5)) |_| {
+    const numEnemiesToSpawn = rand.intRangeAtMost(usize, 1, 5);
+    for (0..numEnemiesToSpawn) |_| {
         const offset = vec2f.init(rand.float(f32) * 10, rand.float(f32) * 10);
         const rec = raylib.Rectangle.init(missedShotCoords.x + offset.x, missedShotCoords.y + offset.y, 10, 10);
         try enemyList.append(rec);
@@ -127,26 +138,6 @@ fn subtractVectors(a: vec2f, b: vec2f) vec2f {
 fn normalizeVector(v: vec2f) vec2f {
     const len = std.math.sqrt(v.x * v.x + v.y * v.y);
     return vec2f.init(v.x / len, v.y / len);
-}
-
-/// Check if a shot has collided with an enemy
-pub fn checkCollisionLineRec(enemyList: *std.ArrayList(raylib.Rectangle), line_start: vec2f, line_end: vec2f) CollisionEvent {
-    var tup = CollisionEvent{ .bool = false, .point = undefined, .rec_idx = undefined };
-    outer: for (enemyList.items, 0..) |rec, i| {
-        var x: f32 = rec.x;
-        while (x <= rec.x + rec.width) : (x += 1.0) {
-            var y: f32 = rec.y;
-            while (y <= rec.y + rec.height) : (y += 1.0) {
-                const collision_point = vec2f.init(x, y);
-                if (raylib.checkCollisionPointLine(collision_point, line_start, line_end, 1)) {
-                    tup = CollisionEvent{ .bool = true, .point = collision_point, .rec_idx = i };
-                    break :outer;
-                }
-            }
-        }
-    }
-
-    return tup;
 }
 
 /// Check if an enemy has collided with the player
@@ -198,19 +189,73 @@ pub fn isPlayerShooting() bool {
     return raylib.isMouseButtonDown(raylib.MouseButton.mouse_button_left);
 }
 
-pub fn doCollisionEvent(numCollisions: *usize, ballPos: vec2f, enemyList: *std.ArrayList(raylib.Rectangle), collision: CollisionEvent) void {
+fn isOutOfBounds(pos: vec2f) bool {
+    return pos.x > screenWidth or pos.y > screenHeight or pos.x < 0 or pos.y < 0;
+}
+
+pub fn addProjectile(projectiles: *std.ArrayList(Projectile), player: vec2f, aimPath: vec2f) !void {
+    const vel = subtractVectors(aimPath, player);
+    const normalized = normalizeVector(vel);
+    const newProjectile = Projectile{ .pos = player, .vel = normalized };
+    try projectiles.append(newProjectile);
+}
+
+pub fn updateProjectiles(projectiles: *std.ArrayList(Projectile)) void {
+    for (0..projectiles.items.len) |i| {
+        const proj = projectiles.items[i];
+        projectiles.items[i] = Projectile{ .pos = vec2f.init(proj.pos.x + proj.vel.x * 5, proj.pos.y + proj.vel.y * 5), .vel = proj.vel };
+    }
+}
+
+pub fn drawProjectiles(projectiles: *std.ArrayList(Projectile)) void {
+    for (projectiles.items) |proj| {
+        raylib.drawCircleV(proj.pos, 3, raylib.Color.blue);
+    }
+}
+
+pub fn clearProjectiles(projectiles: *std.ArrayList(Projectile)) !void {
+    projectiles.resize(0) catch @panic("Failed to clear projectile list");
+}
+
+pub fn doCollisionEvent(numCollisions: *usize, enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile), collision: CollisionEvent) !void {
     numCollisions.* += 1;
-    // raylib.drawText("COLLISION!", 900, 10, 20, raylib.Color.green);
-    raylib.drawLineV(ballPos, collision.point, raylib.Color.dark_green);
-    _ = enemyList.orderedRemove(collision.rec_idx);
+
+    // Remove the projectile and enemy from their respective lists only if the index is valid
+    if (collision.proj_idx < projectiles.items.len) {
+        _ = projectiles.swapRemove(collision.proj_idx);
+    }
+
+    if (collision.rec_idx < enemyList.items.len) {
+        _ = enemyList.swapRemove(collision.rec_idx);
+    }
 }
 
-pub fn doMissEvent(ballPos: vec2f, aimPath: vec2f, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
-    raylib.drawLineV(ballPos, aimPath, raylib.Color.gray);
-    try spawnEnemy(aimPath, enemyList);
+pub fn doMissEvent(activeEvent: CollisionEvent, enemyList: *std.ArrayList(raylib.Rectangle)) !void {
+    try spawnEnemy(activeEvent.point, enemyList);
 }
 
-// fn addProjectile(projectileList: *std.ArrayList(Projectile), player: vec2f, aimPath: vec2f) void {
-//     _ = aimPath;
-//     try projectileList.append(Projectile{ .pos = player, .vel = vec2f.init(0, 0) });
-// }
+pub fn checkProjectileCollision(enemyList: *std.ArrayList(raylib.Rectangle), projectiles: *std.ArrayList(Projectile), activeEventList: *std.ArrayList(CollisionEvent)) !void {
+    var proj_idx: usize = 0;
+    while (proj_idx < projectiles.items.len) {
+        const proj = projectiles.items[proj_idx];
+        var collision_detected = false;
+
+        enemylist: for (enemyList.items, 0..) |rec, enemy_idx| {
+            if (raylib.checkCollisionCircleRec(proj.pos, 3, rec)) {
+                try activeEventList.append(CollisionEvent.init(true, proj.pos, enemy_idx, proj_idx));
+                collision_detected = true;
+                break :enemylist;
+            }
+        }
+
+        if (!collision_detected) {
+            if (isOutOfBounds(proj.pos)) {
+                try activeEventList.append(CollisionEvent.init(false, proj.pos, 0, proj_idx));
+                _ = projectiles.swapRemove(proj_idx);
+                continue; // Skip incrementing proj_idx as we've removed this projectile
+            }
+        }
+
+        proj_idx += 1;
+    }
+}
