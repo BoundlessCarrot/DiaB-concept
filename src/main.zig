@@ -92,6 +92,8 @@ pub fn main() anyerror!void {
                 break :blk;
             },
             Screen.Game => blk: {
+                raylib.hideCursor();
+
                 if (checkCollisionEnemyPlayer(&enemyList, ballPos)) currentScreen = Screen.EndScreen;
                 break :blk;
             },
@@ -111,8 +113,6 @@ pub fn main() anyerror!void {
         // draw
         raylib.beginDrawing();
         defer raylib.endDrawing();
-
-        raylib.hideCursor();
 
         switch (currentScreen) {
             Screen.MainMenu => blk: {
