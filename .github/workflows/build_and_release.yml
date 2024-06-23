@@ -21,7 +21,7 @@ jobs:
     permissions: write-all
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
             target: x86_64-linux
@@ -59,13 +59,13 @@ jobs:
       - name: Build binary
         run: zig build -Doptimize=ReleaseSafe
 
-      - name: Rename binary (MacOS, Ubuntu)
+      - name: Prepare binary (MacOS, Ubuntu)
         if: matrix.os != 'windows-latest'
         run: |
+          chmod +x zig-out/bin/DiaB-concept
           mv zig-out/bin/DiaB-concept zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
-          chmod +x zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
 
-      - name: Rename binary (Windows)
+      - name: Prepare binary (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
@@ -79,12 +79,29 @@ jobs:
             exit 1
           }
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
+          path: zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Get commit hash
+        id: commit
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: github.ref == 'refs/heads/main'
         with:
           tag_name: ${{ steps.commit.outputs.sha_short }}
           name: Release ${{ steps.commit.outputs.sha_short }}
-          files: |
-            zig-out/bin/*
+          files: ./**/DiaB-concept_*
           generate_release_notes: true
