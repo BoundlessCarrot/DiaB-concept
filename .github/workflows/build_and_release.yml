@@ -86,6 +86,7 @@ jobs:
           path: zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           if-no-files-found: error
 
+
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -105,16 +106,19 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          MAJOR=$(echo $VERSION | cut -d. -f1 | sed 's/v//')
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          PATCH=$(echo $VERSION | cut -d. -f3)
-          if [ "$MAJOR" -eq 0 ] && [ "$MINOR" -eq 0 ]; then
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          
+          if [[ $LATEST_TAG == v0.0.0 ]]; then
             NEW_VERSION="0.1.0"
           else
+            MAJOR=$(echo $LATEST_TAG | cut -d. -f1 | sed 's/v//')
+            MINOR=$(echo $LATEST_TAG | cut -d. -f2)
+            PATCH=$(echo $LATEST_TAG | cut -d. -f3)
             NEW_PATCH=$((PATCH+1))
             NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
           fi
+          
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
@@ -124,21 +128,25 @@ jobs:
           ls -R
 
       - name: Create tag
+        env:
+          NEW_VERSION: ${{ steps.get_version.outputs.new_version }}
         run: |
+          echo "Creating tag v$NEW_VERSION"
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git tag -a v${{ steps.get_version.outputs.new_version }} -m "Release v${{ steps.get_version.outputs.new_version }}"
-          git push origin v${{ steps.get_version.outputs.new_version }}
+          git tag -a v$NEW_VERSION -m "Release v$NEW_VERSION"
+          git push origin v$NEW_VERSION
 
       - name: Release
         uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ steps.get_version.outputs.new_version }}
-          name: Release v${{ steps.get_version.outputs.new_version }}
-          files: ./**/DiaB-concept_*
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.get_version.outputs.new_version }}
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          name: Release v${{ env.NEW_VERSION }}
+          files: ./**/DiaB-concept_*
+          generate_release_notes: true
 
       - name: Debug
         if: failure()
@@ -147,3 +155,7 @@ jobs:
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/actions/permissions
           echo "Current user:"
           curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user
+          echo "Environment variables:"
+          env
+          echo "GitHub context:"
+          echo '${{ toJson(github) }}'
