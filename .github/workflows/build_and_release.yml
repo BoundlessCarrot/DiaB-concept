@@ -90,6 +90,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v2
         with:
@@ -112,11 +116,19 @@ jobs:
             NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
           fi
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
 
       - name: List files
         run: |
           echo "Current directory contents:"
           ls -R
+
+      - name: Create tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a v${{ steps.get_version.outputs.new_version }} -m "Release v${{ steps.get_version.outputs.new_version }}"
+          git push origin v${{ steps.get_version.outputs.new_version }}
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -127,3 +139,11 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug
+        if: failure()
+        run: |
+          echo "GITHUB_TOKEN permissions:"
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/actions/permissions
+          echo "Current user:"
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user
