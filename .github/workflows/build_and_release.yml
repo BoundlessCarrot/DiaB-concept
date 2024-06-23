@@ -91,17 +91,52 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      
       - name: Download all artifacts
         uses: actions/download-artifact@v2
 
-      - name: Get commit hash
-        id: commit
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          NEW_PATCH=$((PATCH+1))
+          NEW_VERSION="0.1.$NEW_PATCH"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.commit.outputs.sha_short }}
-          name: Release ${{ steps.commit.outputs.sha_short }}
-          files: ./**/DiaB-concept_*
+          tag_name: v${{ steps.get_version.outputs.new_version }}
+          release_name: Release v${{ steps.get_version.outputs.new_version }}
+          draft: false
+          prerelease: false
           generate_release_notes: true
+
+      - name: Upload Release Assets
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const fs = require('fs').promises;
+            const glob = require('glob');
+            const { repo: { owner, repo }, sha } = context;
+            console.log('Current working directory:', process.cwd());
+            const files = glob.sync('./**/DiaB-concept_*');
+            console.log('Found files:', files);
+            for (const file of files) {
+              console.log('Uploading:', file);
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: ${{ steps.create_release.outputs.id }},
+                name: file.split('/').pop(),
+                data: await fs.readFile(file)
+              });
+            }
