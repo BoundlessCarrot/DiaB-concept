@@ -59,11 +59,61 @@ jobs:
       - name: Build binary
         run: zig build -Doptimize=ReleaseSafe
 
-      - name: Prepare binary (MacOS, Ubuntu)
-        if: matrix.os != 'windows-latest'
+      - name: Prepare binary (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           chmod +x zig-out/bin/DiaB-concept
           mv zig-out/bin/DiaB-concept zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
+
+      - name: Create macOS App Bundle
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP_NAME="DiaB-concept"
+          BUNDLE_NAME="${APP_NAME}.app"
+          CONTENTS_DIR="${BUNDLE_NAME}/Contents"
+          MACOS_DIR="${CONTENTS_DIR}/MacOS"
+          RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+          
+          mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
+          
+          # Move the binary to the MacOS directory
+          mv zig-out/bin/DiaB-concept "${MACOS_DIR}/${APP_NAME}"
+          
+          # Create the Info.plist file
+          cat > "${CONTENTS_DIR}/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleExecutable</key>
+              <string>${APP_NAME}</string>
+              <key>CFBundleIconFile</key>
+              <string>icon.icns</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.yourdomain.${APP_NAME}</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>${APP_NAME}</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>10.15</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+          
+          # If you have an icon file, you would copy it here:
+          # cp path/to/your/icon.icns "${RESOURCES_DIR}/icon.icns"
+          
+          # Create a zip of the .app bundle
+          zip -r "${APP_NAME}_${{ matrix.os }}-${{ matrix.target }}.zip" "${BUNDLE_NAME}"
 
       - name: Prepare binary (Windows)
         if: matrix.os == 'windows-latest'
@@ -83,9 +133,10 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
-          path: zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          path: |
+            zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+            ${{ matrix.os == 'macos-latest' && 'DiaB-concept_macos-latest-aarch64-macos-none.zip' || '' }}
           if-no-files-found: error
-
 
   release:
     needs: build
@@ -162,9 +213,10 @@ jobs:
         with:
           tag_name: v${{ env.NEW_VERSION }}
           name: Release v${{ env.NEW_VERSION }}
-          files: ./**/DiaB-concept_*
+          files: |
+            ./**/DiaB-concept_*
+            ./**/DiaB-concept_*.zip
           generate_release_notes: true
-
 
       - name: Debug
         if: failure()
