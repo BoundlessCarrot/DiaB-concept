@@ -3,6 +3,8 @@ const std = @import("std");
 const raylib = @import("raylib");
 const vec2f = raylib.Vector2;
 
+const raygui = @import("raygui");
+
 // const rlib_math = @import("raylib-math");
 // const rlgl = @import("rlgl");
 
@@ -14,9 +16,7 @@ const radius = settings.radius;
 const gameAPI = @import("gameAPI.zig");
 const calculateAimPathV = gameAPI.calculateAimPathV;
 const calculateAimLineV = gameAPI.calculateAimLineV;
-// const checkCollisionLineRec = gameAPI.checkCollisionLineRec;
 const checkCollisionEnemyPlayer = gameAPI.checkCollisionEnemyPlayer;
-const spawnEnemy = gameAPI.spawnEnemy;
 const spawnInitialEnemies = gameAPI.spawnInitialEnemies;
 const clearEnemyList = gameAPI.clearEnemyList;
 const clearProjectileList = gameAPI.clearProjectiles;
@@ -83,6 +83,7 @@ pub fn main() anyerror!void {
     var currentScreen = Screen.MainMenu;
     // var frameCounter: usize = 0;
     raylib.setTargetFPS(60);
+    raygui.guiEnable();
 
     while (!raylib.windowShouldClose()) {
         switch (currentScreen) {
@@ -92,6 +93,8 @@ pub fn main() anyerror!void {
                 break :blk;
             },
             Screen.Game => blk: {
+                raylib.hideCursor();
+
                 if (checkCollisionEnemyPlayer(&enemyList, ballPos)) currentScreen = Screen.EndScreen;
                 break :blk;
             },
@@ -111,8 +114,6 @@ pub fn main() anyerror!void {
         // draw
         raylib.beginDrawing();
         defer raylib.endDrawing();
-
-        raylib.hideCursor();
 
         switch (currentScreen) {
             Screen.MainMenu => blk: {
