@@ -11,9 +11,9 @@ I'm using:
     - Specifically raylib v5.1-dev
 
 ### Running the game
-  1. Grab your relevant file from the [releases](https://github.com/BoundlessCarrot/DiaB-concept/releases/tag/latest)
-  2. Change the permissions on it with `chmod +x [FILENAME]`
-  3. You should be good to go!
+  1. Grab the release relevant to your machine from the [releases](https://github.com/BoundlessCarrot/DiaB-concept/releases)
+  2. Change the permissions on it with `chmod +x [FILENAME]` (only if you're on MacOS or Linux)
+  3. You should be good to go! The game will probably ping off your antivirus or app recognition software (looking at you, MacOS), this is due to the code being unsigned as of now, it is something that is 100% on the to-do list
 
 ### Developing the game/build from source
   1. Install zig
