@@ -135,7 +135,7 @@ jobs:
           name: DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
           path: |
             zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-            ${{ matrix.os == 'macos-latest' && 'DiaB-concept_macos-latest-aarch64-macos-none.app' || '' }}
+            ${{ matrix.os == 'macos-latest' && 'DiaB-concept_*.app' || '' }}
           if-no-files-found: error
 
   release:
@@ -173,13 +173,11 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.3")
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.5")
           echo "Latest tag: $LATEST_TAG"
           
-          # Remove 'v' prefix
-          VERSION=${LATEST_TAG#v}
-          
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          # Remove 'v' prefix and split into components
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST_TAG#v}"
           
           RELEASE_TYPE="${{ steps.release_type.outputs.type }}"
           echo "Release type: $RELEASE_TYPE"
@@ -214,7 +212,8 @@ jobs:
           tag_name: v${{ env.NEW_VERSION }}
           name: Release v${{ env.NEW_VERSION }}
           files: |
-            ./**/DiaB-concept_*
+            **/DiaB-concept_*
+            **/DiaB-concept_*.app/**/*
           generate_release_notes: true
 
       - name: Debug
