@@ -1,3 +1,4 @@
+
 name: CI
 
 on:
@@ -59,62 +60,11 @@ jobs:
       - name: Build binary
         run: zig build -Doptimize=ReleaseSafe
 
-      - name: Prepare binary (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Prepare binary (MacOS, Ubuntu)
+        if: matrix.os != 'windows-latest'
         run: |
           chmod +x zig-out/bin/DiaB-concept
           mv zig-out/bin/DiaB-concept zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
-
-      - name: Create macOS App Bundle
-        if: matrix.os == 'macos-latest'
-        run: |
-          APP_NAME="DiaB-concept"
-          BUNDLE_NAME="${APP_NAME}.app"
-          CONTENTS_DIR="${BUNDLE_NAME}/Contents"
-          MACOS_DIR="${CONTENTS_DIR}/MacOS"
-          RESOURCES_DIR="${CONTENTS_DIR}/Resources"
-          
-          mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
-          
-          # Move the binary to the MacOS directory
-          mv zig-out/bin/DiaB-concept "${MACOS_DIR}/${APP_NAME}"
-          
-          # Create the Info.plist file
-          cat > "${CONTENTS_DIR}/Info.plist" << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleExecutable</key>
-              <string>${APP_NAME}</string>
-              <key>CFBundleIconFile</key>
-              <string>icon.icns</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.yourdomain.${APP_NAME}</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>${APP_NAME}</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSMinimumSystemVersion</key>
-              <string>10.15</string>
-              <key>NSHighResolutionCapable</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
-          
-          # If you have an icon file, you would copy it here:
-          # cp path/to/your/icon.icns "${RESOURCES_DIR}/icon.icns"
-          
-          # Rename the folder to .app bundle
-          mv "${BUNDLE_NAME}" "DiaB-concept_${{ matrix.os }}-${{ matrix.target }}.app"
-
       - name: Prepare binary (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -128,15 +78,13 @@ jobs:
             Write-Error "No .exe file found in zig-out\bin"
             exit 1
           }
-
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
-          path: |
-            zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-            ${{ matrix.os == 'macos-latest' && 'DiaB-concept_*.app' || '' }}
+          path: zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           if-no-files-found: error
+
 
   release:
     needs: build
@@ -169,15 +117,19 @@ jobs:
             # Default to patch if not specified
             echo "type=patch" >> $GITHUB_OUTPUT
           fi
-
       - name: Get version
         id: get_version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.5")
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "Latest tag: $LATEST_TAG"
           
-          # Remove 'v' prefix and split into components
-          IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST_TAG#v}"
+          # Remove 'v' prefix
+          VERSION=${LATEST_TAG#v}
+          
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          MAJOR=0
+          MINOR=0
+          PATCH=0
           
           RELEASE_TYPE="${{ steps.release_type.outputs.type }}"
           echo "Release type: $RELEASE_TYPE"
@@ -192,7 +144,6 @@ jobs:
           
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
-
       - name: Create tag
         env:
           NEW_VERSION: ${{ steps.get_version.outputs.new_version }}
@@ -202,7 +153,6 @@ jobs:
           git config user.email github-actions@github.com
           git tag -a v$NEW_VERSION -m "Release v$NEW_VERSION"
           git push origin v$NEW_VERSION
-
       - name: Release
         uses: softprops/action-gh-release@v1
         env:
@@ -211,10 +161,9 @@ jobs:
         with:
           tag_name: v${{ env.NEW_VERSION }}
           name: Release v${{ env.NEW_VERSION }}
-          files: |
-            **/DiaB-concept_*
-            **/DiaB-concept_*.app/**/*
+          files: ./**/DiaB-concept_*
           generate_release_notes: true
+
 
       - name: Debug
         if: failure()
