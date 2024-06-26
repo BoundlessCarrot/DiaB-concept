@@ -127,9 +127,9 @@ jobs:
           VERSION=${LATEST_TAG#v}
           
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          MAJOR=0
-          MINOR=0
-          PATCH=0
+          #MAJOR=0
+          #MINOR=0
+          #PATCH=0
           
           RELEASE_TYPE="${{ steps.release_type.outputs.type }}"
           echo "Release type: $RELEASE_TYPE"
