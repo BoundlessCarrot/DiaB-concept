@@ -112,8 +112,8 @@ jobs:
           # If you have an icon file, you would copy it here:
           # cp path/to/your/icon.icns "${RESOURCES_DIR}/icon.icns"
           
-          # Create a zip of the .app bundle
-          zip -r "${APP_NAME}_${{ matrix.os }}-${{ matrix.target }}.zip" "${BUNDLE_NAME}"
+          # Rename the folder to .app bundle
+          mv "${BUNDLE_NAME}" "DiaB-concept_${{ matrix.os }}-${{ matrix.target }}.app"
 
       - name: Prepare binary (Windows)
         if: matrix.os == 'windows-latest'
@@ -135,7 +135,7 @@ jobs:
           name: DiaB-concept_${{ matrix.os }}-${{ matrix.target }}
           path: |
             zig-out/bin/DiaB-concept_${{ matrix.os }}-${{ matrix.target }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-            ${{ matrix.os == 'macos-latest' && 'DiaB-concept_macos-latest-aarch64-macos-none.zip' || '' }}
+            ${{ matrix.os == 'macos-latest' && 'DiaB-concept_macos-latest-aarch64-macos-none.app' || '' }}
           if-no-files-found: error
 
   release:
@@ -173,7 +173,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.3")
           echo "Latest tag: $LATEST_TAG"
           
           # Remove 'v' prefix
@@ -215,7 +215,6 @@ jobs:
           name: Release v${{ env.NEW_VERSION }}
           files: |
             ./**/DiaB-concept_*
-            ./**/DiaB-concept_*.zip
           generate_release_notes: true
 
       - name: Debug
